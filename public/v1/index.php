@@ -31,11 +31,8 @@ try {
     error_log((string)$exception);
 
     if (!headers_sent()) {
-        http_response_code(500);
-        header('Content-Type: application/problem+json');
-
         // Match ExaPHP's Problem Details without relying on a working autoloader.
-        echo json_encode([
+        $body = json_encode([
             'type' => '/problems/application/internal-server-error',
             'title' => 'Internal Server Error',
             'detail' => 'An unknown error occurred.',
@@ -43,5 +40,12 @@ try {
             'instance' => $_SERVER['REQUEST_URI'] ?? null,
             'metadata' => new stdClass(),
         ], JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+
+        http_response_code(500);
+
+        header('Content-Type: application/problem+json');
+        header('Content-Length: ' . strlen($body));
+
+        echo $body;
     }
 }
