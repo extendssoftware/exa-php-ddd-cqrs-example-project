@@ -7,20 +7,24 @@ use ExtendsSoftware\ExaPHPExample\Application\ApplicationModule;
 
 try {
     $projectRoot = dirname(__DIR__, 2);
+
     chdir($projectRoot);
 
     require_once $projectRoot . '/vendor/autoload.php';
 
+    $configDirectory = getenv('APP_CONFIG_DIRECTORY') ?: $projectRoot . '/config';
+    $configFilePattern = '/\.(global|local)\.php$/';
+    $cacheDirectory = getenv('APP_CACHE_DIRECTORY') ?: $projectRoot . '/data/cache';
+    $cacheEnabled = filter_var(getenv('APP_CACHE_ENABLED'), FILTER_VALIDATE_BOOLEAN);
+    $modules = [
+        new ApplicationModule(),
+    ];
+
     new ApplicationBuilder()
-        ->addGlobalConfigDirectory(
-            getenv('APP_CONFIG_DIRECTORY') ?: $projectRoot . '/config',
-            '/\.(global|local)\.php$/',
-        )
-        ->setCacheLocation(getenv('APP_CACHE_DIRECTORY') ?: $projectRoot . '/data/cache')
-        ->setCacheEnabled(filter_var(getenv('APP_CACHE_ENABLED'), FILTER_VALIDATE_BOOLEAN))
-        ->addModule(
-            new ApplicationModule(),
-        )
+        ->addGlobalConfigDirectory($configDirectory, $configFilePattern)
+        ->setCacheLocation($cacheDirectory)
+        ->setCacheEnabled($cacheEnabled)
+        ->addModule(...$modules)
         ->build()
         ->bootstrap();
 } catch (Throwable $exception) {
