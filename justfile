@@ -1,4 +1,4 @@
-set positional-arguments
+set positional-arguments := true
 
 # List available recipes.
 default:
@@ -45,15 +45,15 @@ composer-install:
 
 # Run Composer, e.g. just composer require vendor/package.
 composer +args:
-    docker compose run --rm -T --no-deps php composer "$@"
+    @just docker-run-php composer "$@"
 
 # Run PHP, e.g. just php --version.
 php +args:
-    docker compose run --rm -T --no-deps php php "$@"
+    @just docker-run-php php "$@"
 
-# Run PHPUnit after installing dependencies; pass a test path or options.
-php-test *args:
-    @just php vendor/bin/phpunit "$@"
+# Run a command in a temporary PHP container.
+docker-run-php +args:
+    docker compose run --rm -T --no-deps php "$@"
 
 # Validate Compose and Composer configuration.
 validate:
