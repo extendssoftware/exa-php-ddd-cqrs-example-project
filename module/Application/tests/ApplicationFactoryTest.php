@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace ExtendsSoftware\ExaPHPExample\Application\Tests\Infrastructure;
+namespace ExtendsSoftware\ExaPHPExample\Application\Tests;
 
+use ExtendsSoftware\ExaPHPExample\Application\ApplicationFactory;
 use ExtendsSoftware\ExaPHPExample\Application\ApplicationModule;
-use ExtendsSoftware\ExaPHPExample\Application\Infrastructure\ApplicationFactory;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

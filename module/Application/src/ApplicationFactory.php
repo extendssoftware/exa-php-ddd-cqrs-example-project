@@ -2,13 +2,12 @@
 
 declare(strict_types=1);
 
-namespace ExtendsSoftware\ExaPHPExample\Application\Infrastructure;
+namespace ExtendsSoftware\ExaPHPExample\Application;
 
 use ExtendsSoftware\ExaPHP\Application\ApplicationBuilder;
 use ExtendsSoftware\ExaPHP\Application\ApplicationBuilderException;
 use ExtendsSoftware\ExaPHP\Application\ApplicationInterface;
 use ExtendsSoftware\ExaPHP\ServiceLocator\ServiceLocatorException;
-use ExtendsSoftware\ExaPHPExample\Application\ApplicationModule;
 
 final readonly class ApplicationFactory
 {

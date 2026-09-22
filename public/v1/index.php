@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use ExtendsSoftware\ExaPHPExample\Application\Infrastructure\ApplicationFactory;
+use ExtendsSoftware\ExaPHPExample\Application\ApplicationFactory;
 
 try {
     $projectRoot = dirname(__DIR__, 2);
@@ -18,7 +18,7 @@ try {
     error_log((string)$exception);
 
     if (!headers_sent()) {
-        // Match ExaPHP's Problem Details without relying on a working autoloader.
+        // Last-resort bootstrap error response; must work without Composer or ExaPHP.
         $body = json_encode([
             'type' => '/problems/application/internal-server-error',
             'title' => 'Internal Server Error',

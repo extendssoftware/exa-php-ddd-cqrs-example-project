@@ -18,11 +18,13 @@
 - Put use cases, commands, queries, DTOs, and handlers in `Application`.
 - Commands may change state; queries must be side-effect free.
 - Put HTTP, persistence, messaging, ExaPHP integration, and repository implementations in `Infrastructure`.
+- Composition-root classes that assemble the application, such as `ApplicationFactory` and `ApplicationModule`, may live directly under the module's `src/` directory, outside the domain layers.
 - Dependencies point inward: Application may depend on Domain; Infrastructure may depend on Application and Domain; neither Domain nor Application may depend on Infrastructure.
 - Enforce domain invariants in domain objects, not controllers or infrastructure.
 - Avoid anemic entities, public mutable properties, service locators, and business logic in controllers.
 - Keep controllers thin: validate and translate transport-level input, dispatch one command or query, and map its result to an HTTP response.
-- Every HTTP response body, including error bodies, must be an ExaPHP HATEOAS resource; never expose raw arrays, entities, or DTOs.
+- Successful HTTP response bodies must be ExaPHP HATEOAS resources; never expose raw arrays, entities, or DTOs.
+- Use ExaPHP Problem Details for error response bodies. If application bootstrap fails, the entry point may emit a dependency-free Problem Details response that works without Composer or ExaPHP.
 - Status-only responses such as `204 No Content` may omit a body.
 - Make transaction boundaries explicit around command handling; do not hide writes in query paths.
 
