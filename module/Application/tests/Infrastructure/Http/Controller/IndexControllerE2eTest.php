@@ -33,6 +33,7 @@ final class IndexControllerE2eTest extends TestCase
         $body = json_decode((string)$response->getBody(), true, flags: JSON_THROW_ON_ERROR);
 
         self::assertIsArray($body);
+        self::assertSame('/v1', $body['_links']['self']['href']);
         self::assertSame('Welcome to the ExaPHP DDD CQRS example project API.', $body['message']);
         self::assertSame('0.1.0', $body['version']);
         self::assertIsString($body['remoteAddress']);
