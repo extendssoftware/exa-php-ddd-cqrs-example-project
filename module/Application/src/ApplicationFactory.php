@@ -10,6 +10,11 @@ use ExtendsSoftware\ExaPHP\Application\ApplicationInterface;
 use ExtendsSoftware\ExaPHP\ServiceLocator\ServiceLocatorException;
 use ExtendsSoftware\ExaPHPExample\Task\TaskModule;
 
+use function filter_var;
+use function getenv;
+
+use const FILTER_VALIDATE_BOOLEAN;
+
 final readonly class ApplicationFactory
 {
     /**
