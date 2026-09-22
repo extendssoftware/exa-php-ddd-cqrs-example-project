@@ -2,8 +2,7 @@
 
 declare(strict_types=1);
 
-use ExtendsSoftware\ExaPHP\Application\ApplicationBuilder;
-use ExtendsSoftware\ExaPHPExample\Application\ApplicationModule;
+use ExtendsSoftware\ExaPHPExample\Application\Infrastructure\ApplicationFactory;
 
 try {
     $projectRoot = dirname(__DIR__, 2);
@@ -12,20 +11,8 @@ try {
 
     require_once $projectRoot . '/vendor/autoload.php';
 
-    $configDirectory = getenv('APP_CONFIG_DIRECTORY') ?: $projectRoot . '/config';
-    $configFilePattern = '/\.(global|local)\.php$/';
-    $cacheDirectory = getenv('APP_CACHE_DIRECTORY') ?: $projectRoot . '/data/cache';
-    $cacheEnabled = filter_var(getenv('APP_CACHE_ENABLED'), FILTER_VALIDATE_BOOLEAN);
-    $modules = [
-        new ApplicationModule(),
-    ];
-
-    new ApplicationBuilder()
-        ->addGlobalConfigDirectory($configDirectory, $configFilePattern)
-        ->setCacheLocation($cacheDirectory)
-        ->setCacheEnabled($cacheEnabled)
-        ->addModule(...$modules)
-        ->build()
+    new ApplicationFactory()
+        ->create($projectRoot)
         ->bootstrap();
 } catch (Throwable $exception) {
     error_log((string)$exception);
