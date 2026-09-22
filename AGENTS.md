@@ -16,7 +16,7 @@
 - Keep bounded contexts isolated. Integrate through explicit application contracts or events, not another context's internals.
 - Keep `Domain` framework-agnostic: entities, value objects, domain services, domain events, and repository interfaces belong here.
 - Put use cases, commands, queries, DTOs, and handlers in `Application`.
-- Commands may change state; queries must be side-effect free.
+- Commands may change state; queries must be side effect free.
 - Put HTTP, persistence, messaging, ExaPHP integration, and repository implementations in `Infrastructure`.
 - Composition-root classes that assemble the application, such as `ApplicationFactory` and `ApplicationModule`, may live directly under the module's `src/` directory, outside the domain layers.
 - Dependencies point inward: Application may depend on Domain; Infrastructure may depend on Application and Domain; neither Domain nor Application may depend on Infrastructure.
