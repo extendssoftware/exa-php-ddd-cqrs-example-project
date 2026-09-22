@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit bootstrap="vendor/autoload.php" cacheDirectory="data/cache/phpunit">
+    <testsuites>
+        <testsuite name="Application">
+            <directory>module/Application/tests</directory>
+        </testsuite>
+    </testsuites>
+</phpunit>

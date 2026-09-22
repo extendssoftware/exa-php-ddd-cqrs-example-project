@@ -41,6 +41,7 @@
 - Add or update tests for every behavior change.
 - A regression fix must include a test that reproduces the failure.
 - Mirror production namespaces below `module/<Module>/tests/` and name test classes `*Test`.
+- Name controller test methods using `<action><expected behavior>`, starting with the controller action (e.g. `get`, `post`, or `put`): `getReturnsApiInformationAsHalJson`, `postRejectsInvalidInput`, or `putUpdatesResource`. Apply this convention to unit, integration, and end-to-end controller tests.
 - Unit-test domain rules and handlers without containers, HTTP, databases, networks, or the system clock.
 - Use injected clock abstractions when behavior depends on time.
 - Use integration tests for adapters and wiring.
