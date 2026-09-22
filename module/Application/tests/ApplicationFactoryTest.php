@@ -18,7 +18,7 @@ final class ApplicationFactoryTest extends TestCase
     #[Test]
     public function createsApplicationWithApplicationModule(): void
     {
-        $projectRoot = dirname(__DIR__, 4);
+        $projectRoot = dirname(__DIR__, 3);
         $application = new ApplicationFactory()->create($projectRoot);
 
         self::assertCount(1, $application->getModules());
