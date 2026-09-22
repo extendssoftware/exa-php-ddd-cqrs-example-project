@@ -8,16 +8,16 @@ default:
 setup: docker-build composer-install docker-up
 
 # Build Docker images.
-docker-build:
-    docker compose build
+docker-build *args:
+    docker compose build "$@"
 
 # Start the API at http://localhost:80.
-docker-up:
-    docker compose up -d
+docker-up *args:
+    docker compose up -d "$@"
 
 # Stop and remove containers without deleting volumes.
-docker-down:
-    docker compose down
+docker-down *args:
+    docker compose down "$@"
 
 # Restart running services.
 docker-restart:
@@ -42,6 +42,14 @@ nginx-reload: nginx-test
 # Install Composer dependencies without requiring running services.
 composer-install:
     @just composer install --no-interaction
+
+# Audit Composer dependencies for security advisories and abandoned packages.
+composer-audit *args:
+    @just composer audit "$@"
+
+# Generate optimized autoloading and reject invalid mappings or duplicate classes.
+composer-dump-autoload:
+    @just composer dump-autoload --optimize --strict-psr --strict-ambiguous
 
 # Run Composer, e.g. just composer require vendor/package.
 composer +args:

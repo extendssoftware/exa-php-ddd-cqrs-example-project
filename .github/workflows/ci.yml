@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1' # Mondays at 06:17 UTC.
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: PHP 8.5 tests
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Install just
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+
+      - name: Build PHP image
+        run: just docker-build php
+
+      - name: Validate Compose and Composer configuration
+        run: just validate
+
+      - name: Install dependencies
+        run: just composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Validate autoload mappings and class uniqueness
+        run: just composer-dump-autoload
+
+      - name: Start HTTP services
+        run: just docker-up --no-build
+
+      - name: Validate nginx configuration
+        run: just nginx-test
+
+      - name: Wait for the API
+        run: >-
+          curl --fail --silent --show-error
+          --retry 30 --retry-all-errors --retry-delay 1
+          --retry-max-time 60 --max-time 5
+          http://127.0.0.1/v1
+
+      - name: Run all tests, including end-to-end tests
+        run: >-
+          just php vendor/bin/phpunit module
+          --fail-on-warning --fail-on-deprecation --fail-on-phpunit-deprecation
+
+      - name: Show service logs on failure
+        if: failure()
+        run: docker compose logs --no-color
+
+      - name: Stop HTTP services
+        if: always()
+        run: just docker-down --remove-orphans
+
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Install just
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+
+      - name: Build PHP image
+        run: just docker-build php
+
+      - name: Audit locked dependencies
+        run: just composer-audit --locked
