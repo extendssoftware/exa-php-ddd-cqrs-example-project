@@ -13,18 +13,24 @@
 
 ## DDD and CQRS
 
-- Keep bounded contexts isolated. Integrate through explicit application contracts or events, not another context's internals.
-- Keep `Domain` framework-agnostic: entities, value objects, domain services, domain events, and repository interfaces belong here.
+- Keep bounded contexts isolated. Integrate through explicit application contracts or events, not another context's
+  internals.
+- Keep `Domain` framework-agnostic: entities, value objects, domain services, domain events, and repository interfaces
+  belong here.
 - Put use cases, commands, queries, DTOs, and handlers in `Application`.
 - Commands may change state; queries must be side effect free.
 - Put HTTP, persistence, messaging, ExaPHP integration, and repository implementations in `Infrastructure`.
-- Composition-root classes that assemble the application, such as `ApplicationFactory` and `ApplicationModule`, may live directly under the module's `src/` directory, outside the domain layers.
-- Dependencies point inward: Application may depend on Domain; Infrastructure may depend on Application and Domain; neither Domain nor Application may depend on Infrastructure.
+- Composition-root classes that assemble the application, such as `ApplicationFactory` and `ApplicationModule`, may live
+  directly under the module's `src/` directory, outside the domain layers.
+- Dependencies point inward: Application may depend on Domain; Infrastructure may depend on Application and Domain;
+  neither Domain nor Application may depend on Infrastructure.
 - Enforce domain invariants in domain objects, not controllers or infrastructure.
 - Avoid anemic entities, public mutable properties, service locators, and business logic in controllers.
-- Keep controllers thin: validate and translate transport-level input, dispatch one command or query, and map its result to an HTTP response.
+- Keep controllers thin: validate and translate transport-level input, dispatch one command or query, and map its result
+  to an HTTP response.
 - Successful HTTP response bodies must be ExaPHP HATEOAS resources; never expose raw arrays, entities, or DTOs.
-- Use ExaPHP Problem Details for error response bodies. If application bootstrap fails, the entry point may emit a dependency-free Problem Details response that works without Composer or ExaPHP.
+- Use ExaPHP Problem Details for error response bodies. If application bootstrap fails, the entry point may emit a
+  dependency-free Problem Details response that works without Composer or ExaPHP.
 - Status-only responses such as `204 No Content` may omit a body.
 - Make transaction boundaries explicit around command handling; do not hide writes in query paths.
 
@@ -49,7 +55,9 @@
 - Add or update tests for every behavior change.
 - A regression fix must include a test that reproduces the failure.
 - Mirror production namespaces below `module/<Module>/tests/` and name test classes `*Test`.
-- Name controller test methods using `<action><expected behavior>`, starting with the controller action (e.g. `get`, `post`, or `put`): `getReturnsApiInformationAsHalJson`, `postRejectsInvalidInput`, or `putUpdatesResource`. Apply this convention to unit, integration, and end-to-end controller tests.
+- Name controller test methods using `<action><expected behavior>`, starting with the controller action (e.g. `get`,
+  `post`, or `put`): `getReturnsApiInformationAsHalJson`, `postRejectsInvalidInput`, or `putUpdatesResource`. Apply this
+  convention to unit, integration, and end-to-end controller tests.
 - Unit-test domain rules and handlers without containers, HTTP, databases, networks, or the system clock.
 - Use injected clock abstractions when behavior depends on time.
 - Use integration tests for adapters and wiring.
