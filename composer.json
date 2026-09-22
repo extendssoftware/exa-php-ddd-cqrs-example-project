@@ -22,12 +22,14 @@
   },
   "autoload": {
     "psr-4": {
-      "ExtendsSoftware\\ExaPHPExample\\Application\\": "module/Application/src/"
+      "ExtendsSoftware\\ExaPHPExample\\Application\\": "module/Application/src/",
+      "ExtendsSoftware\\ExaPHPExample\\Task\\": "module/Task/src/"
     }
   },
   "autoload-dev": {
     "psr-4": {
-      "ExtendsSoftware\\ExaPHPExample\\Application\\Tests\\": "module/Application/tests/"
+      "ExtendsSoftware\\ExaPHPExample\\Application\\Tests\\": "module/Application/tests/",
+      "ExtendsSoftware\\ExaPHPExample\\Task\\Tests\\": "module/Task/tests/"
     }
   }
 }

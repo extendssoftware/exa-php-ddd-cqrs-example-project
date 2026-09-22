@@ -8,6 +8,7 @@ use ExtendsSoftware\ExaPHP\Application\ApplicationBuilder;
 use ExtendsSoftware\ExaPHP\Application\ApplicationBuilderException;
 use ExtendsSoftware\ExaPHP\Application\ApplicationInterface;
 use ExtendsSoftware\ExaPHP\ServiceLocator\ServiceLocatorException;
+use ExtendsSoftware\ExaPHPExample\Task\TaskModule;
 
 final readonly class ApplicationFactory
 {
@@ -21,12 +22,16 @@ final readonly class ApplicationFactory
         $configFilePattern = '/\.(global|local)\.php$/';
         $cacheDirectory = getenv('APP_CACHE_DIRECTORY') ?: $projectRoot . '/data/cache';
         $cacheEnabled = filter_var(getenv('APP_CACHE_ENABLED'), FILTER_VALIDATE_BOOLEAN);
+        $modules = [
+            new ApplicationModule(),
+            new TaskModule(),
+        ];
 
         return new ApplicationBuilder()
             ->addGlobalConfigDirectory($configDirectory, $configFilePattern)
             ->setCacheLocation($cacheDirectory)
             ->setCacheEnabled($cacheEnabled)
-            ->addModule(new ApplicationModule())
+            ->addModule(...$modules)
             ->build();
     }
 }
