@@ -36,6 +36,14 @@
 - Follow existing patterns before introducing a new abstraction or convention.
 - Do not modify generated or vendor-managed files.
 
+## Documentation
+
+- Update README.md when changes affect setup, usage, configuration, or architecture.
+- Update TODO.md when work completes a listed task or changes its scope. Add new tasks only for agreed follow-up work.
+- Update CHANGELOG.md, if present, for user-visible changes, following its existing format.
+- Document implemented behavior accurately and distinguish it from planned functionality.
+- Do not make documentation changes when the task has no relevant documentation impact.
+
 ## Tests
 
 - Add or update tests for every behavior change.
