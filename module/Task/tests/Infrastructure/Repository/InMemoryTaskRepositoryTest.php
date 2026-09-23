@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace ExtendsSoftware\ExaPHPExample\Task\Tests\Infrastructure\Repository;
 
 use DateTimeImmutable;
+use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Event\TaskCompleted;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Event\TaskCreated;
+use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Exception\TaskAlreadyExists;
+use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Exception\TaskNotFound;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Task;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\TaskId;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\TaskState;
@@ -26,13 +29,13 @@ final class InMemoryTaskRepositoryTest extends TestCase
     }
 
     #[Test]
-    public function saveAndFindRestoreStateWithoutTransferringOrConsumingEvents(): void
+    public function addAndFindRestoreStateWithoutTransferringOrConsumingEvents(): void
     {
         $repository = new InMemoryTaskRepository();
         $task = Task::create($this->id(), TaskTitle::fromString('Example task'));
         $state = $task->state();
 
-        $repository->save($task);
+        $repository->add($task);
         $loaded = $repository->find(TaskId::fromString($state->id->value));
 
         self::assertNotNull($loaded);
@@ -43,12 +46,12 @@ final class InMemoryTaskRepositoryTest extends TestCase
     }
 
     #[Test]
-    public function changesAreStoredOnlyWhenExplicitlySaved(): void
+    public function changesAreStoredOnlyWhenExplicitlyUpdated(): void
     {
         $repository = new InMemoryTaskRepository();
         $task = Task::create($this->id(), TaskTitle::fromString('Original title'));
         $original = $task->state();
-        $repository->save($task);
+        $repository->add($task);
 
         $task->rename(TaskTitle::fromString('Unsaved title'));
 
@@ -56,19 +59,22 @@ final class InMemoryTaskRepositoryTest extends TestCase
         self::assertNotNull($loaded);
         self::assertEquals($original, $loaded->state());
 
-        $loaded->complete(new DateTimeImmutable('2026-09-23T12:00:00Z'));
+        $completedAt = new DateTimeImmutable('2026-09-23T12:00:00Z');
+        $loaded->complete($completedAt);
         $another = $repository->find($original->id);
         self::assertNotNull($another);
         self::assertNotSame($loaded, $another);
         self::assertEquals($original, $another->state());
 
-        $repository->save($loaded);
+        $repository->update($loaded);
 
         self::assertEquals($loaded->state(), $repository->find($original->id)?->state());
+        self::assertEquals([new TaskCompleted($original->id, $completedAt)], $loaded->pullDomainEvents());
+        self::assertSame([], $repository->find($original->id)?->pullDomainEvents());
     }
 
     #[Test]
-    public function savePreservesHistoricalTitleAndCompletionTime(): void
+    public function addPreservesHistoricalTitleAndCompletionTime(): void
     {
         $repository = new InMemoryTaskRepository();
         $state = new TaskState(
@@ -78,7 +84,7 @@ final class InMemoryTaskRepositoryTest extends TestCase
             new DateTimeImmutable('2026-09-23T14:30:00.123456+02:00'),
         );
 
-        $repository->save(Task::reconstitute($state));
+        $repository->add(Task::reconstitute($state));
 
         self::assertEquals($state, $repository->find($state->id)?->state());
     }
@@ -92,14 +98,64 @@ final class InMemoryTaskRepositoryTest extends TestCase
             TaskId::fromString('01902424-9b00-7cc3-98c4-2c1f7c675cee'),
             TaskTitle::fromString('Second task'),
         );
-        $repository->save($first);
-        $repository->save($second);
+        $repository->add($first);
+        $repository->add($second);
         $first->rename(TaskTitle::fromString('Updated first task'));
-        $repository->save($first);
+        $repository->update($first);
 
         self::assertEquals($first->state(), $repository->find($first->state()->id)?->state());
         self::assertEquals($second->state(), $repository->find($second->state()->id)?->state());
         self::assertNull(new InMemoryTaskRepository()->find($first->state()->id));
+    }
+
+    #[Test]
+    public function addRejectsDuplicateIdWithoutOverwritingStoredState(): void
+    {
+        $repository = new InMemoryTaskRepository();
+        $original = Task::create($this->id(), TaskTitle::fromString('Original title'));
+        $repository->add($original);
+        $duplicate = Task::create($this->id(), TaskTitle::fromString('Different title'));
+        $state = $duplicate->state();
+
+        $this->expectException(TaskAlreadyExists::class);
+        $this->expectExceptionMessage('Task already exists.');
+
+        try {
+            $repository->add($duplicate);
+        } finally {
+            self::assertEquals($original->state(), $repository->find($this->id())?->state());
+            self::assertEquals([new TaskCreated($state->id, $state->title)], $duplicate->pullDomainEvents());
+        }
+    }
+
+    #[Test]
+    public function updateRejectsMissingTaskWithoutInsertingIt(): void
+    {
+        $repository = new InMemoryTaskRepository();
+        $task = Task::create($this->id(), TaskTitle::fromString('Missing task'));
+        $state = $task->state();
+
+        $this->expectException(TaskNotFound::class);
+        $this->expectExceptionMessage('Task was not found.');
+
+        try {
+            $repository->update($task);
+        } finally {
+            self::assertNull($repository->find($state->id));
+            self::assertEquals([new TaskCreated($state->id, $state->title)], $task->pullDomainEvents());
+        }
+    }
+
+    #[Test]
+    public function updateAcceptsUnchangedState(): void
+    {
+        $repository = new InMemoryTaskRepository();
+        $task = Task::create($this->id(), TaskTitle::fromString('Existing task'));
+        $repository->add($task);
+
+        $repository->update($task);
+
+        self::assertEquals($task->state(), $repository->find($this->id())?->state());
     }
 
     private function id(): TaskId
