@@ -5,6 +5,9 @@
 - Target PHP 8.5 and keep `declare(strict_types=1);` in every PHP file.
 - Follow the existing PSR-4 namespaces and module layout under `module/<Module>/`.
 - Use native parameter, property, and return types; use PHPDoc only for information the type system cannot express.
+- Document exceptions that can propagate to callers with PHPDoc `@throws`, including the conditions that cause them.
+  Include exceptions from delegated calls when applicable; omit exceptions handled internally or prevented by the
+  function's or method's guarantees.
 - Prefer `final` classes unless inheritance is intentional.
 - Prefer constructor injection over service location.
 - Make value objects and other immutable classes `readonly`; use mutable state only when the domain requires it.
