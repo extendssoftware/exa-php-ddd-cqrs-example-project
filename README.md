@@ -49,7 +49,8 @@ directory.
 The `Shared` module contains framework-independent DDD building blocks used across modules. It provides domain event
 contracts and an optional aggregate base class for event collection, with no runtime module registration. These local
 abstractions provide a migration point for future framework support; aggregate identity and business rules remain in
-their owning domains.
+their owning domains. Shared application contracts also provide an injectable time source, with system and frozen clock
+implementations in Infrastructure for production use and deterministic tests.
 
 The current `Application` module assembles the API. The HTTP entry point is `public/v1/index.php`. Successful response
 bodies use ExaPHP HATEOAS resources, and errors use Problem Details. Tests mirror production namespaces under each

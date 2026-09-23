@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Shared application clock contract with a UTC system clock and a frozen clock for deterministic tests.
 - Shared module with domain event contracts and an aggregate base class, used by the Task aggregate and its events.
 - Task aggregate collects immutable creation, rename, completion, and reopening events. Pulling events clears the
   collection; reconstitution, rejected actions, and renaming to the same title produce no events.
