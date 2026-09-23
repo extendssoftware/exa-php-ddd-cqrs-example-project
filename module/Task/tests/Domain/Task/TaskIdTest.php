@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Domain\Task;
+namespace ExtendsSoftware\ExaPHPExample\Task\Tests\Domain\Task;
 
 use Error;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\TaskId;
