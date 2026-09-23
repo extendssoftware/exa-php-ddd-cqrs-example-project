@@ -5,10 +5,15 @@ declare(strict_types=1);
 namespace ExtendsSoftware\ExaPHPExample\Task\Domain\Task;
 
 use DateTimeImmutable;
+use ExtendsSoftware\ExaPHPExample\Shared\Domain\AbstractAggregateRoot;
+use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Event\TaskCompleted;
+use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Event\TaskCreated;
+use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Event\TaskRenamed;
+use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Event\TaskReopened;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Exception\TaskAlreadyCompleted;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Exception\TaskNotCompleted;
 
-final class Task
+final class Task extends AbstractAggregateRoot
 {
     private function __construct(
         readonly TaskId $id,
@@ -19,7 +24,10 @@ final class Task
 
     public static function create(TaskId $id, TaskTitle $title): self
     {
-        return new self($id, $title, TaskStatus::Pending, null);
+        $task = new self($id, $title, TaskStatus::Pending, null);
+        $task->recordThat(new TaskCreated($id, $title));
+
+        return $task;
     }
 
     public static function reconstitute(
@@ -33,7 +41,12 @@ final class Task
 
     public function rename(TaskTitle $title): void
     {
+        if ($this->title->value === $title->value) {
+            return;
+        }
+
         $this->title = $title;
+        $this->recordThat(new TaskRenamed($this->id, $title));
     }
 
     /**
@@ -47,6 +60,7 @@ final class Task
 
         $this->status = TaskStatus::Pending;
         $this->completedAt = null;
+        $this->recordThat(new TaskReopened($this->id));
     }
 
     /**
@@ -60,5 +74,6 @@ final class Task
 
         $this->status = TaskStatus::Completed;
         $this->completedAt = $completedAt;
+        $this->recordThat(new TaskCompleted($this->id, $completedAt));
     }
 }

@@ -5,6 +5,10 @@ declare(strict_types=1);
 namespace ExtendsSoftware\ExaPHPExample\Task\Tests\Domain\Task;
 
 use DateTimeImmutable;
+use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Event\TaskCompleted;
+use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Event\TaskCreated;
+use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Event\TaskRenamed;
+use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Event\TaskReopened;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Exception\TaskAlreadyCompleted;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Exception\TaskNotCompleted;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Task;
@@ -46,6 +50,7 @@ final class TaskTest extends TestCase
         self::assertSame($title, $task->title);
         self::assertSame($status, $task->status);
         self::assertSame($completedAt, $task->completedAt);
+        self::assertSame([], $task->pullDomainEvents());
     }
 
     /**
@@ -77,6 +82,7 @@ final class TaskTest extends TestCase
         self::assertSame($title, $task->title);
         self::assertSame($status, $task->status);
         self::assertSame($completedAt, $task->completedAt);
+        self::assertSame([], $task->pullDomainEvents());
     }
 
     #[Test]
@@ -139,6 +145,10 @@ final class TaskTest extends TestCase
         } finally {
             self::assertSame(TaskStatus::Completed, $task->status);
             self::assertSame($completedAt, $task->completedAt);
+            self::assertEquals([
+                new TaskCreated($task->id, $task->title),
+                new TaskCompleted($task->id, $completedAt),
+            ], $task->pullDomainEvents());
         }
     }
 
@@ -202,6 +212,7 @@ final class TaskTest extends TestCase
             self::assertSame($title, $task->title);
             self::assertSame($status, $task->status);
             self::assertNull($task->completedAt);
+            self::assertSame([], $task->pullDomainEvents());
         }
     }
 
@@ -217,6 +228,79 @@ final class TaskTest extends TestCase
 
         self::assertSame(TaskStatus::Completed, $task->status);
         self::assertSame($completedAt, $task->completedAt);
+    }
+
+    #[Test]
+    public function pullDomainEventsReturnsActionSnapshotsInOrderAndClearsCollection(): void
+    {
+        $task = $this->task();
+        $originalTitle = $task->title;
+        $renamedTitle = TaskTitle::fromString('Renamed task');
+        $completedAt = new DateTimeImmutable('2026-09-23T14:30:00+02:00');
+
+        $task->rename($renamedTitle);
+        $task->complete($completedAt);
+        $task->reopen();
+
+        $events = $task->pullDomainEvents();
+
+        self::assertEquals([
+            new TaskCreated($task->id, $originalTitle),
+            new TaskRenamed($task->id, $renamedTitle),
+            new TaskCompleted($task->id, $completedAt),
+            new TaskReopened($task->id),
+        ], $events);
+        self::assertSame([], $task->pullDomainEvents());
+
+        $nextTitle = TaskTitle::fromString('Another title');
+        $task->rename($nextTitle);
+
+        self::assertEquals([new TaskRenamed($task->id, $nextTitle)], $task->pullDomainEvents());
+        self::assertSame($originalTitle, $events[0]->title);
+        self::assertSame($renamedTitle, $events[1]->title);
+        self::assertSame($completedAt, $events[2]->completedAt);
+    }
+
+    #[Test]
+    public function renameToSameTitleDoesNotRecordAnEvent(): void
+    {
+        $task = $this->task();
+        $title = $task->title;
+        $task->pullDomainEvents();
+
+        $task->rename(TaskTitle::fromString($title->value));
+
+        self::assertSame($title, $task->title);
+        self::assertSame([], $task->pullDomainEvents());
+    }
+
+    #[Test]
+    public function reconstitutedTaskRecordsOnlyNewActions(): void
+    {
+        $id = TaskId::fromString('01902424-9b00-7cc3-98c4-2c1f7c675ced');
+        $task = Task::reconstitute(
+            $id,
+            TaskTitle::reconstitute('Existing title'),
+            TaskStatus::Completed,
+            new DateTimeImmutable('2026-09-23T12:00:00Z'),
+        );
+
+        $task->reopen();
+
+        self::assertEquals([new TaskReopened($id)], $task->pullDomainEvents());
+    }
+
+    #[Test]
+    public function domainEventsBelongToTheirAggregate(): void
+    {
+        $first = $this->task();
+        $second = Task::create(
+            TaskId::fromString('01902424-9b00-7cc3-98c4-2c1f7c675cee'),
+            TaskTitle::fromString('Second task'),
+        );
+
+        self::assertEquals([new TaskCreated($first->id, $first->title)], $first->pullDomainEvents());
+        self::assertEquals([new TaskCreated($second->id, $second->title)], $second->pullDomainEvents());
     }
 
     private function task(): Task
