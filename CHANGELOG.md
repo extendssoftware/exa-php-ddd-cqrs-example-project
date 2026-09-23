@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Shared module with domain event contracts and an aggregate base class, used by the Task aggregate and its events.
 - Task aggregate root supporting creation, renaming, completion with a supplied timestamp, reopening, and reconstitution
   of trusted persisted state without reapplying domain validation. Completing an already completed task throws
   `TaskAlreadyCompleted`; reopening a task that is not completed throws `TaskNotCompleted`.
