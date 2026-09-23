@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ExtendsSoftware\ExaPHPExample\Task\Infrastructure\Repository;
 
+use ExtendsSoftware\ExaPHPExample\Shared\Application\Outbox\OutboxInterface;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Exception\TaskAlreadyExists;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Exception\TaskNotFound;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Task;
@@ -17,6 +18,8 @@ final class InMemoryTaskRepository implements TaskRepositoryInterface
      * @var array<string, TaskState>
      */
     private array $states = [];
+
+    public function __construct(private readonly OutboxInterface $outbox) {}
 
     public function find(TaskId $id): ?Task
     {
@@ -36,6 +39,7 @@ final class InMemoryTaskRepository implements TaskRepositoryInterface
         }
 
         $this->states[$state->id->value] = $state;
+        $this->appendEvents($task);
     }
 
     /**
@@ -49,6 +53,7 @@ final class InMemoryTaskRepository implements TaskRepositoryInterface
         }
 
         $this->states[$state->id->value] = $state;
+        $this->appendEvents($task);
     }
 
     /**
@@ -62,5 +67,13 @@ final class InMemoryTaskRepository implements TaskRepositoryInterface
         }
 
         unset($this->states[$id->value]);
+        $this->appendEvents($task);
+    }
+
+    private function appendEvents(Task $task): void
+    {
+        foreach ($task->pullDomainEvents() as $event) {
+            $this->outbox->append($event);
+        }
     }
 }

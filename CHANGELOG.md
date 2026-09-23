@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Shared outbox contract and in-memory implementation. Successful task repository writes append and drain pending domain
+  events; rejected writes preserve them. The dummy outbox provides no durable storage or transaction guarantees.
 - Task repository domain contract and an in-memory infrastructure implementation storing immutable state snapshots
   for the lifetime of the repository instance. `add()` rejects duplicate IDs with `TaskAlreadyExists`; `update()`
   rejects missing tasks with `TaskNotFound`. `remove(Task)` accepts the aggregate, permanently removes its stored state,

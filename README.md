@@ -52,6 +52,11 @@ abstractions provide a migration point for future framework support; aggregate i
 their owning domains. Shared application contracts also provide an injectable time source, with system and frozen clock
 implementations in Infrastructure for production use and deterministic tests.
 
+Shared also provides an outbox contract and an in-memory implementation. The in-memory task repository receives the
+outbox through constructor injection and appends pending events after successful writes. This dummy implementation keeps
+event objects only for its instance's lifetime; durable messages, serialization, atomic database transactions, and
+asynchronous publication are not implemented.
+
 The current `Application` module assembles the API. The HTTP entry point is `public/v1/index.php`. Successful response
 bodies use ExaPHP HATEOAS resources, and errors use Problem Details. Tests mirror production namespaces under each
 module's `tests/` directory.

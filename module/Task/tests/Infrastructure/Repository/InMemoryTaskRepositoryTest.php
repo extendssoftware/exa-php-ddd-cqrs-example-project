@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ExtendsSoftware\ExaPHPExample\Task\Tests\Infrastructure\Repository;
 
 use DateTimeImmutable;
+use ExtendsSoftware\ExaPHPExample\Shared\Infrastructure\Outbox\InMemoryOutbox;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Event\TaskCompleted;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Event\TaskCreated;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Event\TaskDeleted;
@@ -25,15 +26,17 @@ final class InMemoryTaskRepositoryTest extends TestCase
     #[Test]
     public function findReturnsNullForUnknownId(): void
     {
-        $repository = new InMemoryTaskRepository();
+        $outbox = new InMemoryOutbox();
+        $repository = new InMemoryTaskRepository($outbox);
 
         self::assertNull($repository->find($this->id()));
     }
 
     #[Test]
-    public function addAndFindRestoreStateWithoutTransferringOrConsumingEvents(): void
+    public function addStoresEventsInOutboxAndFindRestoresOnlyState(): void
     {
-        $repository = new InMemoryTaskRepository();
+        $outbox = new InMemoryOutbox();
+        $repository = new InMemoryTaskRepository($outbox);
         $task = Task::create($this->id(), TaskTitle::fromString('Example task'));
         $state = $task->state();
 
@@ -44,13 +47,15 @@ final class InMemoryTaskRepositoryTest extends TestCase
         self::assertNotSame($task, $loaded);
         self::assertEquals($state, $loaded->state());
         self::assertSame([], $loaded->pullDomainEvents());
-        self::assertEquals([new TaskCreated($state->id, $state->title)], $task->pullDomainEvents());
+        self::assertEquals([new TaskCreated($state->id, $state->title)], $outbox->all());
+        self::assertSame([], $task->pullDomainEvents());
     }
 
     #[Test]
     public function changesAreStoredOnlyWhenExplicitlyUpdated(): void
     {
-        $repository = new InMemoryTaskRepository();
+        $outbox = new InMemoryOutbox();
+        $repository = new InMemoryTaskRepository($outbox);
         $task = Task::create($this->id(), TaskTitle::fromString('Original title'));
         $original = $task->state();
         $repository->add($task);
@@ -71,14 +76,19 @@ final class InMemoryTaskRepositoryTest extends TestCase
         $repository->update($loaded);
 
         self::assertEquals($loaded->state(), $repository->find($original->id)?->state());
-        self::assertEquals([new TaskCompleted($original->id, $completedAt)], $loaded->pullDomainEvents());
+        self::assertEquals([
+            new TaskCreated($original->id, $original->title),
+            new TaskCompleted($original->id, $completedAt),
+        ], $outbox->all());
+        self::assertSame([], $loaded->pullDomainEvents());
         self::assertSame([], $repository->find($original->id)?->pullDomainEvents());
     }
 
     #[Test]
     public function addPreservesHistoricalTitleAndCompletionTime(): void
     {
-        $repository = new InMemoryTaskRepository();
+        $outbox = new InMemoryOutbox();
+        $repository = new InMemoryTaskRepository($outbox);
         $state = new TaskState(
             $this->id(),
             TaskTitle::reconstitute(str_repeat('a', 101)),
@@ -94,7 +104,8 @@ final class InMemoryTaskRepositoryTest extends TestCase
     #[Test]
     public function tasksAndRepositoryInstancesHaveIndependentStorage(): void
     {
-        $repository = new InMemoryTaskRepository();
+        $outbox = new InMemoryOutbox();
+        $repository = new InMemoryTaskRepository($outbox);
         $first = Task::create($this->id(), TaskTitle::fromString('First task'));
         $second = Task::create(
             TaskId::fromString('01902424-9b00-7cc3-98c4-2c1f7c675cee'),
@@ -107,13 +118,14 @@ final class InMemoryTaskRepositoryTest extends TestCase
 
         self::assertEquals($first->state(), $repository->find($first->state()->id)?->state());
         self::assertEquals($second->state(), $repository->find($second->state()->id)?->state());
-        self::assertNull(new InMemoryTaskRepository()->find($first->state()->id));
+        self::assertNull(new InMemoryTaskRepository(new InMemoryOutbox())->find($first->state()->id));
     }
 
     #[Test]
     public function addRejectsDuplicateIdWithoutOverwritingStoredState(): void
     {
-        $repository = new InMemoryTaskRepository();
+        $outbox = new InMemoryOutbox();
+        $repository = new InMemoryTaskRepository($outbox);
         $original = Task::create($this->id(), TaskTitle::fromString('Original title'));
         $repository->add($original);
         $duplicate = Task::create($this->id(), TaskTitle::fromString('Different title'));
@@ -131,13 +143,15 @@ final class InMemoryTaskRepositoryTest extends TestCase
         } finally {
             self::assertEquals($original->state(), $repository->find($this->id())?->state());
             self::assertEquals([new TaskCreated($state->id, $state->title)], $duplicate->pullDomainEvents());
+            self::assertEquals([new TaskCreated($original->state()->id, $original->state()->title)], $outbox->all());
         }
     }
 
     #[Test]
     public function updateRejectsMissingTaskWithoutInsertingIt(): void
     {
-        $repository = new InMemoryTaskRepository();
+        $outbox = new InMemoryOutbox();
+        $repository = new InMemoryTaskRepository($outbox);
         $task = Task::create($this->id(), TaskTitle::fromString('Missing task'));
         $state = $task->state();
 
@@ -153,25 +167,29 @@ final class InMemoryTaskRepositoryTest extends TestCase
         } finally {
             self::assertNull($repository->find($state->id));
             self::assertEquals([new TaskCreated($state->id, $state->title)], $task->pullDomainEvents());
+            self::assertSame([], $outbox->all());
         }
     }
 
     #[Test]
     public function updateAcceptsUnchangedState(): void
     {
-        $repository = new InMemoryTaskRepository();
+        $outbox = new InMemoryOutbox();
+        $repository = new InMemoryTaskRepository($outbox);
         $task = Task::create($this->id(), TaskTitle::fromString('Existing task'));
         $repository->add($task);
 
         $repository->update($task);
 
         self::assertEquals($task->state(), $repository->find($this->id())?->state());
+        self::assertEquals([new TaskCreated($task->state()->id, $task->state()->title)], $outbox->all());
     }
 
     #[Test]
-    public function removePermanentlyRemovesOnlyRequestedTaskAndPreservesEvents(): void
+    public function removePermanentlyRemovesOnlyRequestedTaskAndStoresEvents(): void
     {
-        $repository = new InMemoryTaskRepository();
+        $outbox = new InMemoryOutbox();
+        $repository = new InMemoryTaskRepository($outbox);
         $task = Task::create($this->id(), TaskTitle::fromString('Task to delete'));
         $other = Task::create(
             TaskId::fromString('01902424-9b00-7cc3-98c4-2c1f7c675cee'),
@@ -186,13 +204,19 @@ final class InMemoryTaskRepositoryTest extends TestCase
 
         self::assertNull($repository->find($this->id()));
         self::assertEquals($other->state(), $repository->find($other->state()->id)?->state());
-        self::assertEquals([new TaskDeleted($this->id())], $task->pullDomainEvents());
+        self::assertEquals([
+            new TaskCreated($task->state()->id, $task->state()->title),
+            new TaskCreated($other->state()->id, $other->state()->title),
+            new TaskDeleted($this->id()),
+        ], $outbox->all());
+        self::assertSame([], $task->pullDomainEvents());
     }
 
     #[Test]
     public function removeRejectsMissingTask(): void
     {
-        $repository = new InMemoryTaskRepository();
+        $outbox = new InMemoryOutbox();
+        $repository = new InMemoryTaskRepository($outbox);
         $id = $this->id();
         $task = Task::create($id, TaskTitle::fromString('Missing task'));
 
@@ -203,6 +227,8 @@ final class InMemoryTaskRepositoryTest extends TestCase
             $repository->remove($task);
         } catch (TaskNotFound $exception) {
             self::assertSame($id, $exception->taskId);
+            self::assertSame([], $outbox->all());
+            self::assertEquals([new TaskCreated($id, $task->state()->title)], $task->pullDomainEvents());
 
             throw $exception;
         }
@@ -211,7 +237,8 @@ final class InMemoryTaskRepositoryTest extends TestCase
     #[Test]
     public function updateAfterRemovalRejectsChangesWithoutRecreatingTask(): void
     {
-        $repository = new InMemoryTaskRepository();
+        $outbox = new InMemoryOutbox();
+        $repository = new InMemoryTaskRepository($outbox);
         $task = Task::create($this->id(), TaskTitle::fromString('Task to delete'));
         $repository->add($task);
         $task->pullDomainEvents();
@@ -232,7 +259,6 @@ final class InMemoryTaskRepositoryTest extends TestCase
         } finally {
             self::assertNull($repository->find($this->id()));
             self::assertEquals([
-                new TaskDeleted($this->id()),
                 new TaskRenamed($this->id(), $title),
             ], $task->pullDomainEvents());
         }
@@ -241,7 +267,8 @@ final class InMemoryTaskRepositoryTest extends TestCase
     #[Test]
     public function updateOfStaleCopyFailsAfterAnotherInstanceDeletesTask(): void
     {
-        $repository = new InMemoryTaskRepository();
+        $outbox = new InMemoryOutbox();
+        $repository = new InMemoryTaskRepository($outbox);
         $task = Task::create($this->id(), TaskTitle::fromString('Task to delete'));
         $repository->add($task);
         $stale = $repository->find($this->id());
@@ -258,6 +285,30 @@ final class InMemoryTaskRepositoryTest extends TestCase
         } finally {
             self::assertNull($repository->find($this->id()));
         }
+    }
+
+    #[Test]
+    public function writesAppendAllPendingEventsInOrderWithoutDuplicates(): void
+    {
+        $outbox = new InMemoryOutbox();
+        $repository = new InMemoryTaskRepository($outbox);
+        $task = Task::create($this->id(), TaskTitle::fromString('Original title'));
+        $original = $task->state();
+        $title = TaskTitle::fromString('Renamed title');
+        $task->rename($title);
+
+        $repository->add($task);
+        $repository->update($task);
+        $task->delete();
+        $repository->remove($task);
+
+        self::assertEquals([
+            new TaskCreated($original->id, $original->title),
+            new TaskRenamed($original->id, $title),
+            new TaskDeleted($original->id),
+        ], $outbox->all());
+        self::assertSame([], $task->pullDomainEvents());
+        self::assertNull($repository->find($original->id));
     }
 
     private function id(): TaskId
