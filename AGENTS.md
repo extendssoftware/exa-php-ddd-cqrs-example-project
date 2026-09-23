@@ -58,7 +58,8 @@
 
 ## Documentation
 
-- Update README.md when changes affect setup, usage, configuration, or architecture.
+- Update README.md only when changes affect project-wide setup, usage, configuration, or architecture. Do not document
+  individual domain types, methods, or validation rules there.
 - Update TODO.md when work completes a listed task or changes its scope. Add new tasks only for agreed follow-up work.
 - Update CHANGELOG.md, if present, for user-visible changes, following its existing format.
 - Document implemented behavior accurately and distinguish it from planned functionality.
