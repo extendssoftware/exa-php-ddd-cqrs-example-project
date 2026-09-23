@@ -25,6 +25,12 @@
 - Dependencies point inward: Application may depend on Domain; Infrastructure may depend on Application and Domain;
   neither Domain nor Application may depend on Infrastructure.
 - Enforce domain invariants in domain objects, not controllers or infrastructure.
+- Prefer private constructors and named static factory methods for domain value objects.
+- Use `create()` or descriptive `from*()` methods to enforce current domain validation rules for new values.
+- Use `reconstitute()` to restore trusted persisted values without applying current creation validation.
+- Keep shared constructors free of creation validation so historical values remain loadable.
+- Expose value object values through constructor-promoted properties with public read and private write visibility
+  (`public private(set)`), retaining `readonly` immutability.
 - Avoid anemic entities, public mutable properties, service locators, and business logic in controllers.
 - Keep controllers thin: validate and translate transport-level input, dispatch one command or query, and map its result
   to an HTTP response.
