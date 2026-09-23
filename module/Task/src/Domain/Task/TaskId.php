@@ -23,13 +23,13 @@ final readonly class TaskId
     public static function fromString(string $value): self
     {
         if (!Uuid::isValid($value)) {
-            throw new InvalidTaskId();
+            throw new InvalidTaskId(Uuid::UUID_TYPE_UNIX_TIME);
         }
 
         $uuid = Uuid::fromString($value);
         $fields = $uuid->getFields();
         if (!$fields instanceof FieldsInterface || $fields->getVersion() !== Uuid::UUID_TYPE_UNIX_TIME) {
-            throw new InvalidTaskId();
+            throw new InvalidTaskId(Uuid::UUID_TYPE_UNIX_TIME);
         }
 
         return new self($uuid->toString());

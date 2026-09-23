@@ -11,6 +11,8 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
+use function str_repeat;
+
 final class TaskTitleTest extends TestCase
 {
     /**
@@ -47,7 +49,6 @@ final class TaskTitleTest extends TestCase
             'above maximum' => [str_repeat('a', 101)],
             'multibyte below minimum' => ['任务'],
             'multibyte above maximum' => [str_repeat('é', 101)],
-            'invalid UTF-8' => ["abc\xFF"],
         ];
     }
 
@@ -57,10 +58,25 @@ final class TaskTitleTest extends TestCase
     {
         $this->expectException(InvalidTaskTitle::class);
         $this->expectExceptionMessageIsOrContains(
-            'Task title must contain between 3 and 100 characters of valid UTF-8.',
+            'Task title must contain between 3 and 100 characters.',
         );
 
         TaskTitle::fromString($value);
+    }
+
+    #[Test]
+    public function fromStringRejectsInvalidEncoding(): void
+    {
+        $this->expectException(InvalidTaskTitle::class);
+        $this->expectExceptionMessageIsOrContains('Task title must be valid UTF-8.');
+
+        TaskTitle::fromString("abc\xFF");
+    }
+
+    #[Test]
+    public function reconstitutePreservesInvalidEncoding(): void
+    {
+        self::assertSame("abc\xFF", TaskTitle::reconstitute("abc\xFF")->value);
     }
 
     #[Test]

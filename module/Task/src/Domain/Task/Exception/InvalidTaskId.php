@@ -8,8 +8,8 @@ use InvalidArgumentException;
 
 final class InvalidTaskId extends InvalidArgumentException
 {
-    public function __construct()
+    public function __construct(int $version)
     {
-        parent::__construct('Task ID must be a valid UUID version 7.');
+        parent::__construct(sprintf('Task ID must be a valid UUID version %d.', $version));
     }
 }
