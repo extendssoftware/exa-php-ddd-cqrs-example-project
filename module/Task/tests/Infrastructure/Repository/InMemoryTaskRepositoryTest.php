@@ -118,10 +118,14 @@ final class InMemoryTaskRepositoryTest extends TestCase
         $state = $duplicate->state();
 
         $this->expectException(TaskAlreadyExists::class);
-        $this->expectExceptionMessage('Task already exists.');
+        $this->expectExceptionMessage('Task "01902424-9b00-7cc3-98c4-2c1f7c675ced" already exists.');
 
         try {
             $repository->add($duplicate);
+        } catch (TaskAlreadyExists $exception) {
+            self::assertSame($state->id, $exception->taskId);
+
+            throw $exception;
         } finally {
             self::assertEquals($original->state(), $repository->find($this->id())?->state());
             self::assertEquals([new TaskCreated($state->id, $state->title)], $duplicate->pullDomainEvents());
@@ -136,10 +140,14 @@ final class InMemoryTaskRepositoryTest extends TestCase
         $state = $task->state();
 
         $this->expectException(TaskNotFound::class);
-        $this->expectExceptionMessage('Task was not found.');
+        $this->expectExceptionMessage('Task "01902424-9b00-7cc3-98c4-2c1f7c675ced" was not found.');
 
         try {
             $repository->update($task);
+        } catch (TaskNotFound $exception) {
+            self::assertSame($state->id, $exception->taskId);
+
+            throw $exception;
         } finally {
             self::assertNull($repository->find($state->id));
             self::assertEquals([new TaskCreated($state->id, $state->title)], $task->pullDomainEvents());

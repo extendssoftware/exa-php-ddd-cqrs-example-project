@@ -56,7 +56,7 @@ final class Task extends AbstractAggregateRoot
     public function reopen(): void
     {
         if ($this->status !== TaskStatus::Completed) {
-            throw new TaskNotCompleted();
+            throw new TaskNotCompleted($this->id);
         }
 
         $this->status = TaskStatus::Pending;
@@ -70,7 +70,7 @@ final class Task extends AbstractAggregateRoot
     public function complete(DateTimeImmutable $completedAt): void
     {
         if ($this->status === TaskStatus::Completed) {
-            throw new TaskAlreadyCompleted();
+            throw new TaskAlreadyCompleted($this->id);
         }
 
         $this->status = TaskStatus::Completed;

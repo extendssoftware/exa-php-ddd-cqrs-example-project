@@ -32,7 +32,7 @@ final class InMemoryTaskRepository implements TaskRepositoryInterface
     {
         $state = $task->state();
         if (isset($this->states[$state->id->value])) {
-            throw new TaskAlreadyExists();
+            throw new TaskAlreadyExists($state->id);
         }
 
         $this->states[$state->id->value] = $state;
@@ -45,7 +45,7 @@ final class InMemoryTaskRepository implements TaskRepositoryInterface
     {
         $state = $task->state();
         if (!isset($this->states[$state->id->value])) {
-            throw new TaskNotFound();
+            throw new TaskNotFound($state->id);
         }
 
         $this->states[$state->id->value] = $state;

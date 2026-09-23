@@ -139,10 +139,14 @@ final class TaskTest extends TestCase
         $task->complete($completedAt);
 
         $this->expectException(TaskAlreadyCompleted::class);
-        $this->expectExceptionMessageIsOrContains('Task is already completed.');
+        $this->expectExceptionMessageIsOrContains('Task "01902424-9b00-7cc3-98c4-2c1f7c675ced" is already completed.');
 
         try {
             $task->complete(new DateTimeImmutable('2026-09-24T12:00:00Z'));
+        } catch (TaskAlreadyCompleted $exception) {
+            self::assertSame($task->state()->id, $exception->taskId);
+
+            throw $exception;
         } finally {
             self::assertSame(TaskStatus::Completed, $task->state()->status);
             self::assertSame($completedAt, $task->state()->completedAt);
@@ -204,10 +208,14 @@ final class TaskTest extends TestCase
         $task = Task::reconstitute(new TaskState($id, $title, $status, null));
 
         $this->expectException(TaskNotCompleted::class);
-        $this->expectExceptionMessageIsOrContains('Task is not completed.');
+        $this->expectExceptionMessageIsOrContains('Task "01902424-9b00-7cc3-98c4-2c1f7c675ced" is not completed.');
 
         try {
             $task->reopen();
+        } catch (TaskNotCompleted $exception) {
+            self::assertSame($id, $exception->taskId);
+
+            throw $exception;
         } finally {
             self::assertSame($id, $task->state()->id);
             self::assertSame($title, $task->state()->title);
