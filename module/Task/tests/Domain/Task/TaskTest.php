@@ -139,7 +139,7 @@ final class TaskTest extends TestCase
         $task->complete($completedAt);
 
         $this->expectException(TaskAlreadyCompleted::class);
-        $this->expectExceptionMessage('Task is already completed.');
+        $this->expectExceptionMessageIsOrContains('Task is already completed.');
 
         try {
             $task->complete(new DateTimeImmutable('2026-09-24T12:00:00Z'));
@@ -204,7 +204,7 @@ final class TaskTest extends TestCase
         $task = Task::reconstitute(new TaskState($id, $title, $status, null));
 
         $this->expectException(TaskNotCompleted::class);
-        $this->expectExceptionMessage('Task is not completed.');
+        $this->expectExceptionMessageIsOrContains('Task is not completed.');
 
         try {
             $task->reopen();
