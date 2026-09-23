@@ -16,10 +16,10 @@ use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Exception\TaskNotCompleted;
 final class Task extends AbstractAggregateRoot
 {
     private function __construct(
-        readonly TaskId $id,
-        private(set) TaskTitle $title,
-        private(set) TaskStatus $status,
-        private(set) ?DateTimeImmutable $completedAt,
+        private readonly TaskId $id,
+        private TaskTitle $title,
+        private TaskStatus $status,
+        private ?DateTimeImmutable $completedAt,
     ) {}
 
     public static function create(TaskId $id, TaskTitle $title): self
@@ -30,13 +30,14 @@ final class Task extends AbstractAggregateRoot
         return $task;
     }
 
-    public static function reconstitute(
-        TaskId $id,
-        TaskTitle $title,
-        TaskStatus $status,
-        ?DateTimeImmutable $completedAt,
-    ): self {
-        return new self($id, $title, $status, $completedAt);
+    public static function reconstitute(TaskState $state): self
+    {
+        return new self($state->id, $state->title, $state->status, $state->completedAt);
+    }
+
+    public function state(): TaskState
+    {
+        return new TaskState($this->id, $this->title, $this->status, $this->completedAt);
     }
 
     public function rename(TaskTitle $title): void
