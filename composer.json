@@ -13,8 +13,9 @@
   ],
   "require": {
     "php": "^8.5",
-    "extendssoftware/exa-php": "^0.9",
-    "ramsey/uuid": "^4.9"
+    "ext-mbstring": "*",
+    "ramsey/uuid": "^4.9",
+    "extendssoftware/exa-php": "^0.9"
   },
   "require-dev": {
     "phpunit/phpunit": "^13.0",
