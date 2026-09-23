@@ -8,11 +8,14 @@ All notable changes to this project will be documented in this file.
 
 - Task repository domain contract and an in-memory infrastructure implementation storing immutable state snapshots
   for the lifetime of the repository instance. `add()` rejects duplicate IDs with `TaskAlreadyExists`; `update()`
-  rejects missing tasks with `TaskNotFound`. Both exceptions expose the task ID and include it in their messages.
+  rejects missing tasks with `TaskNotFound`. `remove()` permanently removes a task and rejects missing IDs; subsequent
+  updates fail with `TaskNotFound`. Both exceptions expose the task ID and include it in their messages.
 - Shared application clock contract with a UTC system clock and a frozen clock for deterministic tests.
 - Shared module with domain event contracts and an aggregate base class, used by the Task aggregate and its events.
-- Task aggregate collects immutable creation, rename, completion, and reopening events. Pulling events clears the
+- Task aggregate collects immutable creation, rename, completion, reopening, and deletion events. Pulling events clears the
   collection; reconstitution, rejected actions, and renaming to the same title produce no events.
+- `Task::delete()` records `TaskDeleted` for hard deletion through the repository without introducing a deleted status
+  or preventing further actions on the in-memory aggregate.
 - Task aggregate root supporting creation, renaming, completion with a supplied timestamp, reopening, and reconstitution
   of trusted persisted state through an immutable `TaskState` containing domain types, without reapplying domain
   validation. Aggregate properties are private and exposed through state snapshots. Completing an already completed task

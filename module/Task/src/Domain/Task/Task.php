@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use ExtendsSoftware\ExaPHPExample\Shared\Domain\AbstractAggregateRoot;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Event\TaskCompleted;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Event\TaskCreated;
+use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Event\TaskDeleted;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Event\TaskRenamed;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Event\TaskReopened;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Exception\TaskAlreadyCompleted;
@@ -38,6 +39,11 @@ final class Task extends AbstractAggregateRoot
     public function state(): TaskState
     {
         return new TaskState($this->id, $this->title, $this->status, $this->completedAt);
+    }
+
+    public function delete(): void
+    {
+        $this->recordThat(new TaskDeleted($this->id));
     }
 
     public function rename(TaskTitle $title): void

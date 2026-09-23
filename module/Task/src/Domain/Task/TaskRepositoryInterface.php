@@ -20,4 +20,11 @@ interface TaskRepositoryInterface
      * @throws TaskNotFound When no task with this ID is stored.
      */
     public function update(Task $task): void;
+
+    /**
+     * Permanently removes the stored task.
+     *
+     * @throws TaskNotFound When no task with this ID is stored.
+     */
+    public function remove(TaskId $id): void;
 }

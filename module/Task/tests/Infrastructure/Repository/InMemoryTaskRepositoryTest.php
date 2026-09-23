@@ -7,6 +7,8 @@ namespace ExtendsSoftware\ExaPHPExample\Task\Tests\Infrastructure\Repository;
 use DateTimeImmutable;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Event\TaskCompleted;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Event\TaskCreated;
+use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Event\TaskDeleted;
+use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Event\TaskRenamed;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Exception\TaskAlreadyExists;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Exception\TaskNotFound;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Task;
@@ -164,6 +166,97 @@ final class InMemoryTaskRepositoryTest extends TestCase
         $repository->update($task);
 
         self::assertEquals($task->state(), $repository->find($this->id())?->state());
+    }
+
+    #[Test]
+    public function removePermanentlyRemovesOnlyRequestedTaskAndPreservesEvents(): void
+    {
+        $repository = new InMemoryTaskRepository();
+        $task = Task::create($this->id(), TaskTitle::fromString('Task to delete'));
+        $other = Task::create(
+            TaskId::fromString('01902424-9b00-7cc3-98c4-2c1f7c675cee'),
+            TaskTitle::fromString('Other task'),
+        );
+        $repository->add($task);
+        $repository->add($other);
+        $task->pullDomainEvents();
+
+        $task->delete();
+        $repository->remove(TaskId::fromString($this->id()->value));
+
+        self::assertNull($repository->find($this->id()));
+        self::assertEquals($other->state(), $repository->find($other->state()->id)?->state());
+        self::assertEquals([new TaskDeleted($this->id())], $task->pullDomainEvents());
+    }
+
+    #[Test]
+    public function removeRejectsMissingTask(): void
+    {
+        $repository = new InMemoryTaskRepository();
+        $id = $this->id();
+
+        $this->expectException(TaskNotFound::class);
+        $this->expectExceptionMessage('Task "01902424-9b00-7cc3-98c4-2c1f7c675ced" was not found.');
+
+        try {
+            $repository->remove($id);
+        } catch (TaskNotFound $exception) {
+            self::assertSame($id, $exception->taskId);
+
+            throw $exception;
+        }
+    }
+
+    #[Test]
+    public function updateAfterRemovalRejectsChangesWithoutRecreatingTask(): void
+    {
+        $repository = new InMemoryTaskRepository();
+        $task = Task::create($this->id(), TaskTitle::fromString('Task to delete'));
+        $repository->add($task);
+        $task->pullDomainEvents();
+        $task->delete();
+        $repository->remove($this->id());
+        $title = TaskTitle::fromString('Changed after deletion');
+
+        $task->rename($title);
+
+        $this->expectException(TaskNotFound::class);
+
+        try {
+            $repository->update($task);
+        } catch (TaskNotFound $exception) {
+            self::assertSame($task->state()->id, $exception->taskId);
+
+            throw $exception;
+        } finally {
+            self::assertNull($repository->find($this->id()));
+            self::assertEquals([
+                new TaskDeleted($this->id()),
+                new TaskRenamed($this->id(), $title),
+            ], $task->pullDomainEvents());
+        }
+    }
+
+    #[Test]
+    public function updateOfStaleCopyFailsAfterAnotherInstanceDeletesTask(): void
+    {
+        $repository = new InMemoryTaskRepository();
+        $task = Task::create($this->id(), TaskTitle::fromString('Task to delete'));
+        $repository->add($task);
+        $stale = $repository->find($this->id());
+        self::assertNotNull($stale);
+        $task->delete();
+        $repository->remove($this->id());
+
+        $stale->complete(new DateTimeImmutable('2026-09-23T12:00:00Z'));
+
+        $this->expectException(TaskNotFound::class);
+
+        try {
+            $repository->update($stale);
+        } finally {
+            self::assertNull($repository->find($this->id()));
+        }
     }
 
     private function id(): TaskId

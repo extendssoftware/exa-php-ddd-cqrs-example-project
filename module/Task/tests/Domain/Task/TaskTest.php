@@ -7,6 +7,7 @@ namespace ExtendsSoftware\ExaPHPExample\Task\Tests\Domain\Task;
 use DateTimeImmutable;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Event\TaskCompleted;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Event\TaskCreated;
+use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Event\TaskDeleted;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Event\TaskRenamed;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Event\TaskReopened;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Exception\TaskAlreadyCompleted;
@@ -357,6 +358,50 @@ final class TaskTest extends TestCase
 
         self::assertSame($state->title, $task->state()->title);
         self::assertSame(TaskStatus::Completed, $state->status);
+    }
+
+    #[Test]
+    #[DataProvider('persistedStates')]
+    public function deleteRecordsEventWithoutChangingState(TaskStatus $status, ?DateTimeImmutable $completedAt): void
+    {
+        $state = new TaskState(
+            TaskId::fromString('01902424-9b00-7cc3-98c4-2c1f7c675ced'),
+            TaskTitle::reconstitute('Existing task'),
+            $status,
+            $completedAt,
+        );
+        $task = Task::reconstitute($state);
+
+        $task->delete();
+
+        self::assertEquals($state, $task->state());
+        self::assertEquals([new TaskDeleted($state->id)], $task->pullDomainEvents());
+        self::assertSame([], $task->pullDomainEvents());
+    }
+
+    #[Test]
+    public function deleteDoesNotGuardSubsequentDomainActions(): void
+    {
+        $task = $this->task();
+        $state = $task->state();
+        $title = TaskTitle::fromString('Changed after deletion');
+        $completedAt = new DateTimeImmutable('2026-09-23T12:00:00Z');
+
+        $task->delete();
+        $task->rename($title);
+        $task->complete($completedAt);
+        $task->reopen();
+
+        self::assertSame($title, $task->state()->title);
+        self::assertSame(TaskStatus::Pending, $task->state()->status);
+        self::assertNull($task->state()->completedAt);
+        self::assertEquals([
+            new TaskCreated($state->id, $state->title),
+            new TaskDeleted($state->id),
+            new TaskRenamed($state->id, $title),
+            new TaskCompleted($state->id, $completedAt),
+            new TaskReopened($state->id),
+        ], $task->pullDomainEvents());
     }
 
     private function task(): Task
