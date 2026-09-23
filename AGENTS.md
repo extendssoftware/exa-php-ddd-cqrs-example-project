@@ -29,6 +29,11 @@
 - Use `create()` or descriptive `from*()` methods to enforce current domain validation rules for new values.
 - Use `reconstitute()` to restore trusted persisted values without applying current creation validation.
 - Keep shared constructors free of creation validation so historical values remain loadable.
+- ID value objects are an exception to the creation and reconstitution rules above:
+  - Use `create()` to generate a new valid ID and return its value object.
+  - Use descriptive `from*()` methods to construct an ID value object from an existing value, including database values.
+    Always validate the ID's format and required version (for example, UUID version 7 for task IDs).
+  - Do not provide an unvalidated `reconstitute()` method for ID value objects.
 - Expose value object values through constructor-promoted properties with public read and private write visibility
   (`public private(set)`), retaining `readonly` immutability.
 - Avoid anemic entities, public mutable properties, service locators, and business logic in controllers.
