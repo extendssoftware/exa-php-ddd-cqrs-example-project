@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace ExtendsSoftware\ExaPHPExample\Task\Tests\Domain\Task;
 
 use Error;
+use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Exception\InvalidTaskId;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\TaskId;
-use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -67,7 +67,7 @@ final class TaskIdTest extends TestCase
     #[DataProvider('invalidValues')]
     public function fromStringRejectsInvalidTaskIds(string $value): void
     {
-        $this->expectException(InvalidArgumentException::class);
+        $this->expectException(InvalidTaskId::class);
         $this->expectExceptionMessageIsOrContains('Task ID must be a valid UUID version 7.');
 
         TaskId::fromString($value);
