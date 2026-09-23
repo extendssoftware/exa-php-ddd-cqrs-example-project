@@ -182,7 +182,7 @@ final class InMemoryTaskRepositoryTest extends TestCase
         $task->pullDomainEvents();
 
         $task->delete();
-        $repository->remove(TaskId::fromString($this->id()->value));
+        $repository->remove($task);
 
         self::assertNull($repository->find($this->id()));
         self::assertEquals($other->state(), $repository->find($other->state()->id)?->state());
@@ -194,12 +194,13 @@ final class InMemoryTaskRepositoryTest extends TestCase
     {
         $repository = new InMemoryTaskRepository();
         $id = $this->id();
+        $task = Task::create($id, TaskTitle::fromString('Missing task'));
 
         $this->expectException(TaskNotFound::class);
         $this->expectExceptionMessageIsOrContains('Task "01902424-9b00-7cc3-98c4-2c1f7c675ced" was not found.');
 
         try {
-            $repository->remove($id);
+            $repository->remove($task);
         } catch (TaskNotFound $exception) {
             self::assertSame($id, $exception->taskId);
 
@@ -215,7 +216,7 @@ final class InMemoryTaskRepositoryTest extends TestCase
         $repository->add($task);
         $task->pullDomainEvents();
         $task->delete();
-        $repository->remove($this->id());
+        $repository->remove($task);
         $title = TaskTitle::fromString('Changed after deletion');
 
         $task->rename($title);
@@ -246,7 +247,7 @@ final class InMemoryTaskRepositoryTest extends TestCase
         $stale = $repository->find($this->id());
         self::assertNotNull($stale);
         $task->delete();
-        $repository->remove($this->id());
+        $repository->remove($task);
 
         $stale->complete(new DateTimeImmutable('2026-09-23T12:00:00Z'));
 

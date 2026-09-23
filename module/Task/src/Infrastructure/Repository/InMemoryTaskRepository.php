@@ -54,8 +54,9 @@ final class InMemoryTaskRepository implements TaskRepositoryInterface
     /**
      * @throws TaskNotFound When no task with this ID is stored.
      */
-    public function remove(TaskId $id): void
+    public function remove(Task $task): void
     {
+        $id = $task->state()->id;
         if (!isset($this->states[$id->value])) {
             throw new TaskNotFound($id);
         }
