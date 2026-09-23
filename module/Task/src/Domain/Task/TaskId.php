@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace ExtendsSoftware\ExaPHPExample\Task\Domain\ValueObject;
+namespace ExtendsSoftware\ExaPHPExample\Task\Domain\Task;
 
 use InvalidArgumentException;
 use Ramsey\Uuid\Rfc4122\FieldsInterface;

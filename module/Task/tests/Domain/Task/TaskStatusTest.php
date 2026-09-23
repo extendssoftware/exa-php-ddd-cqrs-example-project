@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace ExtendsSoftware\ExaPHPExample\Task\Tests\Domain\Enum;
+namespace Domain\Task;
 
-use ExtendsSoftware\ExaPHPExample\Task\Domain\Enum\TaskStatus;
+use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\TaskStatus;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

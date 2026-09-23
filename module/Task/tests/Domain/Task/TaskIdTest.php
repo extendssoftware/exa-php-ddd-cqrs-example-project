@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace ExtendsSoftware\ExaPHPExample\Task\Tests\Domain\ValueObject;
+namespace Domain\Task;
 
 use Error;
-use ExtendsSoftware\ExaPHPExample\Task\Domain\ValueObject\TaskId;
+use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\TaskId;
 use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
