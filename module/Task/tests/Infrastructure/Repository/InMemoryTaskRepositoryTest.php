@@ -120,7 +120,7 @@ final class InMemoryTaskRepositoryTest extends TestCase
         $state = $duplicate->state();
 
         $this->expectException(TaskAlreadyExists::class);
-        $this->expectExceptionMessage('Task "01902424-9b00-7cc3-98c4-2c1f7c675ced" already exists.');
+        $this->expectExceptionMessageIsOrContains('Task "01902424-9b00-7cc3-98c4-2c1f7c675ced" already exists.');
 
         try {
             $repository->add($duplicate);
@@ -142,7 +142,7 @@ final class InMemoryTaskRepositoryTest extends TestCase
         $state = $task->state();
 
         $this->expectException(TaskNotFound::class);
-        $this->expectExceptionMessage('Task "01902424-9b00-7cc3-98c4-2c1f7c675ced" was not found.');
+        $this->expectExceptionMessageIsOrContains('Task "01902424-9b00-7cc3-98c4-2c1f7c675ced" was not found.');
 
         try {
             $repository->update($task);
@@ -196,7 +196,7 @@ final class InMemoryTaskRepositoryTest extends TestCase
         $id = $this->id();
 
         $this->expectException(TaskNotFound::class);
-        $this->expectExceptionMessage('Task "01902424-9b00-7cc3-98c4-2c1f7c675ced" was not found.');
+        $this->expectExceptionMessageIsOrContains('Task "01902424-9b00-7cc3-98c4-2c1f7c675ced" was not found.');
 
         try {
             $repository->remove($id);
