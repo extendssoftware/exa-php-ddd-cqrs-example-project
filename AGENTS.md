@@ -63,6 +63,9 @@
 - Update TODO.md when work completes a listed task or changes its scope. Add new tasks only for agreed follow-up work.
 - Append new entries to CHANGELOG.md, if present, for user-visible changes, following its existing format.
   Existing uncommitted entries may be updated. Preserve committed entries; do not edit, replace, reorder, or remove them.
+- For this example project, notable domain and application capabilities, including new command or query use cases,
+  warrant changelog entries even before HTTP exposure. Describe the implemented capability and its availability;
+  avoid entries for individual helper classes, test-only changes, or internal refactoring without behavior changes.
 - Document implemented behavior accurately and distinguish it from planned functionality.
 - Do not make documentation changes when the task has no relevant documentation impact.
 
