@@ -22,6 +22,13 @@
   belong here.
 - Put use cases, commands, queries, DTOs, and handlers in `Application`.
 - Commands may change state; queries must be side effect free.
+- Simple single-aggregate queries may use the domain repository and map state to an application result DTO.
+- For specialized reads such as statistics or filtered, paginated lists, define focused `<Subject><Purpose>ReaderInterface`
+  contracts in `Application` (for example, `TaskStatisticsReaderInterface`). Put implementations in `Infrastructure`;
+  they may return application result DTOs directly without reconstructing aggregates. Keep aggregate repository
+  interfaces in `Domain`.
+- Introduce readers when a query needs them, group related reads where appropriate, and do not require one interface
+  per query or SQL statement. Keep reporting definitions consistent with domain rules.
 - Put HTTP, persistence, messaging, ExaPHP integration, and repository implementations in `Infrastructure`.
 - Composition-root classes that assemble the application, such as `ApplicationFactory` and `ApplicationModule`, may live
   directly under the module's `src/` directory, outside the domain layers.
