@@ -75,6 +75,10 @@
   `post`, or `put`): `getReturnsApiInformationAsHalJson`, `postRejectsInvalidInput`, or `putUpdatesResource`. Apply this
   convention to unit, integration, and end-to-end controller tests.
 - Unit-test domain rules and handlers without containers, HTTP, databases, networks, or the system clock.
+- In unit tests, isolate the class under test by mocking injected collaborator interfaces such as repositories and
+  outboxes. Verify calls and arguments through those contracts, not concrete implementation inspection methods.
+- Use real commands, DTOs, value objects, aggregates, and domain events; do not mock data objects or internal methods
+  such as `recordThat()`. Test domain rules in domain tests and persistence and event forwarding in repository tests.
 - Use injected clock abstractions when behavior depends on time.
 - Use integration tests for adapters and wiring.
 - Test observable behavior instead of private implementation details.
