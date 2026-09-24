@@ -17,6 +17,9 @@ All notable changes to this project will be documented in this file.
 - Task creation application use case through `CreateTask` and `CreateTaskHandler`, validating a caller-supplied ID and
   title and saving a pending task through the repository. The handler returns no value; HTTP exposure is not yet
   implemented.
+- Task retrieval application use case through `GetTask` and `GetTaskHandler`, returning an immutable result DTO with
+  the stored task ID, title, status, and completion time. Invalid IDs and missing tasks raise domain exceptions;
+  queries perform no writes. HTTP exposure is not yet implemented.
 
 ### Fixed
 
