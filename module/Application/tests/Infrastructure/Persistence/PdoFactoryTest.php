@@ -17,6 +17,9 @@ use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
+use function getenv;
+use function putenv;
+
 #[Group('integration')]
 final class PdoFactoryTest extends TestCase
 {
@@ -35,6 +38,51 @@ final class PdoFactoryTest extends TestCase
         $pdo = new PdoFactory()->createService(PDO::class, $serviceLocator);
 
         self::assertSame(['value' => 42], $pdo->query('SELECT 42 AS value')->fetch());
+    }
+
+    #[Test]
+    public function connectsToDockerMysqlUsingDistributedConfiguration(): void
+    {
+        $config = require __DIR__ . '/../../../../../config/pdo.local.php.dist';
+        $serviceLocator = new ServiceLocator(new Container($config));
+
+        $pdo = new PdoFactory()->createService(PDO::class, $serviceLocator);
+
+        self::assertSame('mysql', $pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
+        self::assertSame(getenv('MYSQL_DATABASE'), $pdo->query('SELECT DATABASE()')->fetchColumn());
+        $statement = $pdo->prepare('SELECT :value AS value');
+        $statement->execute(['value' => 'connected']);
+        self::assertSame(['value' => 'connected'], $statement->fetch());
+    }
+
+    #[Test]
+    public function distributedConfigurationReadsEnvironmentSettings(): void
+    {
+        $settings = [
+            'MYSQL_DATABASE' => 'custom_database',
+            'MYSQL_USER' => 'custom_user',
+            'MYSQL_PASSWORD' => '0',
+        ];
+        $original = [];
+        foreach ($settings as $name => $value) {
+            $original[$name] = getenv($name);
+            putenv($name . '=' . $value);
+        }
+
+        try {
+            $config = require __DIR__ . '/../../../../../config/pdo.local.php.dist';
+
+            self::assertSame(
+                'mysql:host=mysql;port=3306;dbname=custom_database;charset=utf8mb4',
+                $config[PDO::class]['dsn'],
+            );
+            self::assertSame('custom_user', $config[PDO::class]['username']);
+            self::assertSame('0', $config[PDO::class]['password']);
+        } finally {
+            foreach ($original as $name => $value) {
+                putenv($value === false ? $name : $name . '=' . $value);
+            }
+        }
     }
 
     #[Test]

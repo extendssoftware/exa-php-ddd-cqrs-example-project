@@ -13,7 +13,7 @@ planned; see [TODO.md](TODO.md).
 
 ## Getting started
 
-Install Docker with Docker Compose and the `just` command runner. PHP 8.5, Composer, and nginx run in containers; local
+Install Docker with Docker Compose and the `just` command runner. PHP 8.5, Composer, nginx, and MySQL 8.4 run in containers; local
 PHP and Composer installations are not required.
 
 From the project root, run:
@@ -22,7 +22,9 @@ From the project root, run:
 just setup
 ```
 
-This builds the images, installs dependencies, and starts the services. Open [http://localhost/v1](http://localhost/v1)
+This creates `.env` from `.env.dist` if needed, builds the images, installs dependencies, and starts the services.
+To customize database settings before the first startup, run `just env-init` and edit `.env` before `just setup`.
+Open [http://localhost/v1](http://localhost/v1)
 to view the API information as HAL JSON. Port 80 must be available on the host.
 
 To stop the services:
@@ -33,10 +35,15 @@ just docker-down
 
 Run `just` to list the available recipes.
 
-To configure a PDO connection, copy `config/pdo.local.php.dist` to `config/pdo.local.php` and set the DSN, credentials,
-and driver options. Local config files are ignored by Git. The template targets MySQL, which requires a reachable
-MySQL server and the `pdo_mysql` PHP extension; these are not included in the current Docker setup. PDO is created
-only when requested from the service locator through `PDO::class`.
+To configure a PDO connection, copy `config/pdo.local.php.dist` to `config/pdo.local.php`. The template reads
+`MYSQL_DATABASE`, `MYSQL_USER`, and `MYSQL_PASSWORD` through `getenv()`. Compose passes these settings from `.env` to
+both PHP and MySQL; `MYSQL_ROOT_PASSWORD` is passed only to MySQL. The defaults in `.env.dist` are for local development.
+The `.env` file and local PHP config files are ignored by Git. The PHP image includes `pdo_mysql`; PDO is created only
+when requested from the service locator through `PDO::class`.
+
+PHP waits for MySQL's health check to successfully query the configured database before starting. MySQL is accessible
+within the Docker network on port 3306 and stores data in the `mysql-data` volume, which survives `just docker-down`.
+Database names and credentials in `.env` initialize an empty volume; changing them does not update an existing database.
 
 ## Architecture
 

@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- MySQL Docker service with persistent storage, a database readiness health check, and PHP PDO MySQL support.
+  Database settings are shared with PHP through a local `.env` file and read by the PDO configuration from the environment.
 - Configurable PDO connections through the application service locator, with a local MySQL configuration template.
 - Task retrieval application use case through `GetTask` and `GetTaskHandler`, returning an immutable result DTO with
   the stored task ID, title, status, and completion time. Invalid IDs and missing tasks raise domain exceptions;

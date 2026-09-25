@@ -5,7 +5,11 @@ default:
     @just --list
 
 # Build images, install dependencies, and start the project.
-setup: docker-build composer-install docker-up
+setup: env-init docker-build composer-install docker-up
+
+# Create local environment settings without replacing existing values.
+env-init:
+    @test -e .env || cp .env.dist .env
 
 # Build Docker images.
 docker-build *args:
