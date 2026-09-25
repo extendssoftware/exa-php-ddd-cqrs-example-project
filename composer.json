@@ -13,6 +13,7 @@
   ],
   "require": {
     "php": "^8.5",
+    "ext-pdo": "*",
     "ext-mbstring": "*",
     "ramsey/uuid": "^4.9",
     "extendssoftware/exa-php": "^0.9"

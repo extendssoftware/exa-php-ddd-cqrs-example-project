@@ -33,6 +33,11 @@ just docker-down
 
 Run `just` to list the available recipes.
 
+To configure a PDO connection, copy `config/pdo.local.php.dist` to `config/pdo.local.php` and set the DSN, credentials,
+and driver options. Local config files are ignored by Git. The template targets MySQL, which requires a reachable
+MySQL server and the `pdo_mysql` PHP extension; these are not included in the current Docker setup. PDO is created
+only when requested from the service locator through `PDO::class`.
+
 ## Architecture
 
 Modules live under `module/<Module>/`. As use cases are introduced, they follow these boundaries:
