@@ -45,6 +45,29 @@ PHP waits for MySQL's health check to successfully query the configured database
 within the Docker network on port 3306 and stores data in the `mysql-data` volume, which survives `just docker-down`.
 Database names and credentials in `.env` initialize an empty volume; changing them does not update an existing database.
 
+For an IDE database connection, use host `127.0.0.1`, port `3306`, and the database name, username, and password from
+`MYSQL_DATABASE`, `MYSQL_USER`, and `MYSQL_PASSWORD` in `.env`. MySQL's published port is bound to localhost.
+Run `just docker-up` to apply the port mapping to an existing container.
+
+### Initialize database tables
+
+MySQL automatically creates tables on first startup with an empty `mysql-data` volume, including during `just setup`.
+Each module owns a `resources/database/schema.sql` file mounted under `/docker-entrypoint-initdb.d/` in `compose.yml`.
+Add a volume mount for each module's schema, using numbered destination filenames such as `010-task.sql` to control
+execution order.
+
+Initialization scripts run only for an empty data volume. Restarting containers, adding schema mounts, or changing SQL
+files does not update an existing database. Apply changes manually to existing databases. To rebuild a disposable local
+database from the schema files, run the following commands; this deletes all existing database data:
+
+```sh
+just docker-down --volumes
+just docker-up
+```
+
+Store timestamps in UTC; the schema uses `DATETIME(6)` to preserve microseconds and expects writes to supply timestamps.
+The Task schema provides the initial storage structure; task operations still use the in-memory repository.
+
 ## Architecture
 
 Modules live under `module/<Module>/`. As use cases are introduced, they follow these boundaries:

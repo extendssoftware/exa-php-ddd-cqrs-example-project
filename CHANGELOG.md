@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Automatic database table initialization on an empty MySQL volume through module-owned SQL files mounted by Compose,
+  including a Task schema with a binary UUID primary key, title, status, creation time, and optional completion time.
 - MySQL Docker service with persistent storage, a database readiness health check, and PHP PDO MySQL support.
   Database settings are shared with PHP through a local `.env` file and read by the PDO configuration from the environment.
 - Configurable PDO connections through the application service locator, with a local MySQL configuration template.

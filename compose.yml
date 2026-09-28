@@ -22,6 +22,7 @@ services:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
     volumes:
       - mysql-data:/var/lib/mysql
+      - ./module/Task/resources/database/schema.sql:/docker-entrypoint-initdb.d/010-task.sql:ro,z
     healthcheck:
       test: >-
         MYSQL_PWD="$${MYSQL_PASSWORD}" mysql --protocol=TCP --host=127.0.0.1
