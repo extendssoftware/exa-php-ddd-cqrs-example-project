@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- MySQL published on localhost port 3306 for IDE database connections.
 - Automatic database table initialization on an empty MySQL volume through module-owned SQL files mounted by Compose,
   including a Task schema with a binary UUID primary key, title, status, creation time, and optional completion time.
 - MySQL Docker service with persistent storage, a database readiness health check, and PHP PDO MySQL support.
