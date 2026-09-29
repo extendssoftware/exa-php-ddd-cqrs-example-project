@@ -82,15 +82,23 @@ composition classes such as `ApplicationFactory` and `ApplicationModule` live di
 directory.
 
 The `Shared` module contains framework-independent DDD building blocks used across modules. It provides domain event
-contracts and an optional aggregate base class for event collection, with no runtime module registration. These local
+contracts and an optional aggregate base class for event collection. Its registered `SharedModule` loads shared service
+bindings from `module/Shared/config/`. These local
 abstractions provide a migration point for future framework support; aggregate identity and business rules remain in
 their owning domains. Shared application contracts also provide an injectable time source, with system and frozen clock
 implementations in Infrastructure for production use and deterministic tests.
 
-Shared also provides an outbox contract and an in-memory implementation. The in-memory task repository receives the
-outbox through constructor injection and appends pending events after successful writes. This dummy implementation keeps
-event objects only for its instance's lifetime; durable messages, serialization, atomic database transactions, and
-asynchronous publication are not implemented.
+Shared also provides an outbox contract and an in-memory implementation. Command handlers receive the outbox through
+constructor injection and append pending domain events after successful repository writes. Repositories persist aggregate
+state and leave pending events available to the caller. The in-memory outbox keeps event objects only for its instance's
+lifetime; durable messages, serialization, and asynchronous publication are not implemented.
+
+Shared provides an application `TransactionManagerInterface` mapped to `PdoTransactionManager` through the reflection
+resolver, using the configured shared `PDO` service. Wrap a command's
+persistence and outbox operations in `transactional()` to commit them together or roll back on failure, using the same
+exception-mode PDO connection for all participating adapters. Nested transactions are rejected. The callback must not
+manage transactions or execute statements that implicitly commit. The in-memory outbox does not participate in database
+transactions; command handlers currently require explicit transaction coordination by their caller.
 
 The current `Application` module assembles the API. The HTTP entry point is `public/v1/index.php`. Successful response
 bodies use ExaPHP HATEOAS resources, and errors use Problem Details. Tests mirror production namespaces under each
