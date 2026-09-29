@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace ExtendsSoftware\ExaPHPExample\Task\Tests\Infrastructure\Repository;
 
 use DateTimeImmutable;
-use ExtendsSoftware\ExaPHPExample\Shared\Application\Outbox\OutboxInterface;
-use ExtendsSoftware\ExaPHPExample\Shared\Domain\DomainEventInterface;
+use ExtendsSoftware\ExaPHPExample\Shared\Infrastructure\Clock\FrozenClock;
+use PDO;
+use PDOException;
+use PHPUnit\Framework\Attributes\Group;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Event\TaskCompleted;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Event\TaskCreated;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Event\TaskDeleted;
@@ -18,52 +20,58 @@ use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\TaskId;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\TaskState;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\TaskStatus;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\TaskTitle;
-use ExtendsSoftware\ExaPHPExample\Task\Infrastructure\Repository\InMemoryTaskRepository;
+use ExtendsSoftware\ExaPHPExample\Task\Infrastructure\Repository\PdoTaskRepository;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-use function count;
-use function str_repeat;
+use function file_get_contents;
+use function str_replace;
 
-final class InMemoryTaskRepositoryTest extends TestCase
+#[Group('integration')]
+final class PdoTaskRepositoryIntegrationTest extends TestCase
 {
+    private PDO $pdo;
+    private FrozenClock $clock;
+
+    protected function setUp(): void
+    {
+        $config = (require __DIR__ . '/../../../../../config/pdo.local.php.dist')[PDO::class];
+        $this->pdo = new PDO($config['dsn'], $config['username'], $config['password'], $config['options']);
+        $schema = file_get_contents(__DIR__ . '/../../../resources/database/schema.sql');
+        $this->pdo->exec(str_replace('CREATE TABLE IF NOT EXISTS', 'CREATE TEMPORARY TABLE', $schema));
+        $this->clock = new FrozenClock(new DateTimeImmutable('2026-09-29T14:00:00.123456+02:00'));
+    }
+
     #[Test]
     public function findReturnsNullForUnknownId(): void
     {
-        $outbox = $this->outboxExpecting();
-        $repository = new InMemoryTaskRepository($outbox);
+        $repository = new PdoTaskRepository($this->pdo, $this->clock);
 
         self::assertNull($repository->find($this->id()));
     }
 
     #[Test]
-    public function addStoresEventsInOutboxAndFindRestoresOnlyState(): void
+    public function addPreservesPendingEventsAndFindRestoresOnlyState(): void
     {
-        $outbox = $this->outboxExpecting(
-            new TaskCreated($this->id(), TaskTitle::fromString('Example task')),
-        );
-        $repository = new InMemoryTaskRepository($outbox);
+        $repository = new PdoTaskRepository($this->pdo, $this->clock);
         $task = Task::create($this->id(), TaskTitle::fromString('Example task'));
         $state = $task->state();
 
         $repository->add($task);
-        $loaded = $repository->find(TaskId::fromString($state->id->value));
+        $loaded = new PdoTaskRepository($this->pdo, $this->clock)
+            ->find(TaskId::fromString($state->id->value));
 
         self::assertNotNull($loaded);
         self::assertNotSame($task, $loaded);
         self::assertEquals($state, $loaded->state());
         self::assertSame([], $loaded->pullDomainEvents());
-        self::assertSame([], $task->pullDomainEvents());
+        self::assertEquals([new TaskCreated($state->id, $state->title)], $task->pullDomainEvents());
     }
 
     #[Test]
     public function changesAreStoredOnlyWhenExplicitlyUpdated(): void
     {
-        $outbox = $this->outboxExpecting(
-            new TaskCreated($this->id(), TaskTitle::fromString('Original title')),
-            new TaskCompleted($this->id(), new DateTimeImmutable('2026-09-23T12:00:00Z')),
-        );
-        $repository = new InMemoryTaskRepository($outbox);
+        $repository = new PdoTaskRepository($this->pdo, $this->clock);
         $task = Task::create($this->id(), TaskTitle::fromString('Original title'));
         $original = $task->state();
         $repository->add($task);
@@ -89,7 +97,7 @@ final class InMemoryTaskRepositoryTest extends TestCase
                 ->find($original->id)
                 ?->state(),
         );
-        self::assertSame([], $loaded->pullDomainEvents());
+        self::assertEquals([new TaskCompleted($original->id, $completedAt)], $loaded->pullDomainEvents());
         self::assertSame([],
             $repository
                 ->find($original->id)
@@ -99,11 +107,10 @@ final class InMemoryTaskRepositoryTest extends TestCase
     #[Test]
     public function addPreservesHistoricalTitleAndCompletionTime(): void
     {
-        $outbox = $this->outboxExpecting();
-        $repository = new InMemoryTaskRepository($outbox);
+        $repository = new PdoTaskRepository($this->pdo, $this->clock);
         $state = new TaskState(
             $this->id(),
-            TaskTitle::reconstitute(str_repeat('a', 101)),
+            TaskTitle::reconstitute('a'),
             TaskStatus::Completed,
             new DateTimeImmutable('2026-09-23T14:30:00.123456+02:00'),
         );
@@ -119,17 +126,9 @@ final class InMemoryTaskRepositoryTest extends TestCase
     }
 
     #[Test]
-    public function tasksAndRepositoryInstancesHaveIndependentStorage(): void
+    public function tasksHaveIndependentStateAndRepositoryInstancesShareStorage(): void
     {
-        $outbox = $this->outboxExpecting(
-            new TaskCreated($this->id(), TaskTitle::fromString('First task')),
-            new TaskCreated(
-                TaskId::fromString('01902424-9b00-7cc3-98c4-2c1f7c675cee'),
-                TaskTitle::fromString('Second task'),
-            ),
-            new TaskRenamed($this->id(), TaskTitle::fromString('Updated first task')),
-        );
-        $repository = new InMemoryTaskRepository($outbox);
+        $repository = new PdoTaskRepository($this->pdo, $this->clock);
         $first = Task::create($this->id(), TaskTitle::fromString('First task'));
         $second = Task::create(
             TaskId::fromString('01902424-9b00-7cc3-98c4-2c1f7c675cee'),
@@ -152,16 +151,18 @@ final class InMemoryTaskRepositoryTest extends TestCase
                 ->find($second->state()->id)
                 ?->state(),
         );
-        self::assertNull(new InMemoryTaskRepository($this->outboxExpecting())->find($first->state()->id));
+        self::assertEquals(
+            $first->state(),
+            new PdoTaskRepository($this->pdo, $this->clock)
+                ->find($first->state()->id)
+                ?->state(),
+        );
     }
 
     #[Test]
     public function addRejectsDuplicateIdWithoutOverwritingStoredState(): void
     {
-        $outbox = $this->outboxExpecting(
-            new TaskCreated($this->id(), TaskTitle::fromString('Original title')),
-        );
-        $repository = new InMemoryTaskRepository($outbox);
+        $repository = new PdoTaskRepository($this->pdo, $this->clock);
         $original = Task::create($this->id(), TaskTitle::fromString('Original title'));
         $repository->add($original);
         $duplicate = Task::create($this->id(), TaskTitle::fromString('Different title'));
@@ -190,8 +191,7 @@ final class InMemoryTaskRepositoryTest extends TestCase
     #[Test]
     public function updateRejectsMissingTaskWithoutInsertingIt(): void
     {
-        $outbox = $this->outboxExpecting();
-        $repository = new InMemoryTaskRepository($outbox);
+        $repository = new PdoTaskRepository($this->pdo, $this->clock);
         $task = Task::create($this->id(), TaskTitle::fromString('Missing task'));
         $state = $task->state();
 
@@ -213,10 +213,7 @@ final class InMemoryTaskRepositoryTest extends TestCase
     #[Test]
     public function updateAcceptsUnchangedState(): void
     {
-        $outbox = $this->outboxExpecting(
-            new TaskCreated($this->id(), TaskTitle::fromString('Existing task')),
-        );
-        $repository = new InMemoryTaskRepository($outbox);
+        $repository = new PdoTaskRepository($this->pdo, $this->clock);
         $task = Task::create($this->id(), TaskTitle::fromString('Existing task'));
         $repository->add($task);
 
@@ -231,17 +228,9 @@ final class InMemoryTaskRepositoryTest extends TestCase
     }
 
     #[Test]
-    public function removePermanentlyRemovesOnlyRequestedTaskAndStoresEvents(): void
+    public function removePermanentlyRemovesOnlyRequestedTaskAndPreservesEvents(): void
     {
-        $outbox = $this->outboxExpecting(
-            new TaskCreated($this->id(), TaskTitle::fromString('Task to delete')),
-            new TaskCreated(
-                TaskId::fromString('01902424-9b00-7cc3-98c4-2c1f7c675cee'),
-                TaskTitle::fromString('Other task'),
-            ),
-            new TaskDeleted($this->id()),
-        );
-        $repository = new InMemoryTaskRepository($outbox);
+        $repository = new PdoTaskRepository($this->pdo, $this->clock);
         $task = Task::create($this->id(), TaskTitle::fromString('Task to delete'));
         $other = Task::create(
             TaskId::fromString('01902424-9b00-7cc3-98c4-2c1f7c675cee'),
@@ -261,14 +250,13 @@ final class InMemoryTaskRepositoryTest extends TestCase
                 ->find($other->state()->id)
                 ?->state(),
         );
-        self::assertSame([], $task->pullDomainEvents());
+        self::assertEquals([new TaskDeleted($this->id())], $task->pullDomainEvents());
     }
 
     #[Test]
     public function removeRejectsMissingTask(): void
     {
-        $outbox = $this->outboxExpecting();
-        $repository = new InMemoryTaskRepository($outbox);
+        $repository = new PdoTaskRepository($this->pdo, $this->clock);
         $id = $this->id();
         $task = Task::create($id, TaskTitle::fromString('Missing task'));
 
@@ -288,11 +276,7 @@ final class InMemoryTaskRepositoryTest extends TestCase
     #[Test]
     public function updateAfterRemovalRejectsChangesWithoutRecreatingTask(): void
     {
-        $outbox = $this->outboxExpecting(
-            new TaskCreated($this->id(), TaskTitle::fromString('Task to delete')),
-            new TaskDeleted($this->id()),
-        );
-        $repository = new InMemoryTaskRepository($outbox);
+        $repository = new PdoTaskRepository($this->pdo, $this->clock);
         $task = Task::create($this->id(), TaskTitle::fromString('Task to delete'));
         $repository->add($task);
         $task->pullDomainEvents();
@@ -313,6 +297,7 @@ final class InMemoryTaskRepositoryTest extends TestCase
         } finally {
             self::assertNull($repository->find($this->id()));
             self::assertEquals([
+                new TaskDeleted($this->id()),
                 new TaskRenamed($this->id(), $title),
             ], $task->pullDomainEvents());
         }
@@ -321,11 +306,7 @@ final class InMemoryTaskRepositoryTest extends TestCase
     #[Test]
     public function updateOfStaleCopyFailsAfterAnotherInstanceDeletesTask(): void
     {
-        $outbox = $this->outboxExpecting(
-            new TaskCreated($this->id(), TaskTitle::fromString('Task to delete')),
-            new TaskDeleted($this->id()),
-        );
-        $repository = new InMemoryTaskRepository($outbox);
+        $repository = new PdoTaskRepository($this->pdo, $this->clock);
         $task = Task::create($this->id(), TaskTitle::fromString('Task to delete'));
         $repository->add($task);
         $stale = $repository->find($this->id());
@@ -345,14 +326,9 @@ final class InMemoryTaskRepositoryTest extends TestCase
     }
 
     #[Test]
-    public function writesAppendAllPendingEventsInOrderWithoutDuplicates(): void
+    public function writesLeaveAllPendingEventsAvailableToCaller(): void
     {
-        $outbox = $this->outboxExpecting(
-            new TaskCreated($this->id(), TaskTitle::fromString('Original title')),
-            new TaskRenamed($this->id(), TaskTitle::fromString('Renamed title')),
-            new TaskDeleted($this->id()),
-        );
-        $repository = new InMemoryTaskRepository($outbox);
+        $repository = new PdoTaskRepository($this->pdo, $this->clock);
         $task = Task::create($this->id(), TaskTitle::fromString('Original title'));
         $original = $task->state();
         $title = TaskTitle::fromString('Renamed title');
@@ -363,22 +339,90 @@ final class InMemoryTaskRepositoryTest extends TestCase
         $task->delete();
         $repository->remove($task);
 
-        self::assertSame([], $task->pullDomainEvents());
+        self::assertEquals([
+            new TaskCreated($original->id, $original->title),
+            new TaskRenamed($original->id, $title),
+            new TaskDeleted($original->id),
+        ], $task->pullDomainEvents());
         self::assertNull($repository->find($original->id));
     }
 
-    private function outboxExpecting(DomainEventInterface ...$events): OutboxInterface
+    #[Test]
+    public function writesPreserveCreationTimeAndNormalizeCompletionTimeToUtc(): void
     {
-        $outbox = $this->createMock(OutboxInterface::class);
-        $index = 0;
-        $outbox
-            ->expects(self::exactly(count($events)))
-            ->method('append')
-            ->willReturnCallback(static function (DomainEventInterface $event) use ($events, &$index): void {
-                self::assertEquals($events[$index++], $event);
-            });
+        $repository = new PdoTaskRepository($this->pdo, $this->clock);
+        $task = Task::reconstitute(new TaskState(
+            $this->id(),
+            TaskTitle::reconstitute('Historical task'),
+            TaskStatus::InProgress,
+            null,
+        ));
+        $repository->add($task);
+        self::assertSame(TaskStatus::InProgress, $repository->find($this->id())?->state()->status);
+        self::assertSame('2026-09-29 12:00:00.123456', $this->pdo->query('SELECT created_at FROM task')->fetchColumn());
 
-        return $outbox;
+        $task->complete(new DateTimeImmutable('2026-09-30T14:30:00.654321+02:00'));
+        $task->pullDomainEvents();
+        $repository = new PdoTaskRepository(
+            $this->pdo,
+            new FrozenClock(new DateTimeImmutable('2026-10-01T00:00:00Z')),
+        );
+        $repository->update($task);
+        self::assertSame('2026-09-29 12:00:00.123456', $this->pdo->query('SELECT created_at FROM task')->fetchColumn());
+        self::assertSame('2026-09-30 12:30:00.654321', $this->pdo->query('SELECT completed_at FROM task')->fetchColumn());
+        self::assertEquals($task->state(), $repository->find($this->id())?->state());
+
+        $task->reopen();
+        $task->pullDomainEvents();
+        $repository->update($task);
+        self::assertEquals($task->state(), $repository->find($this->id())?->state());
+    }
+
+    #[Test]
+    public function databaseFailurePropagatesAndPreservesEvents(): void
+    {
+        $repository = new PdoTaskRepository($this->pdo, $this->clock);
+        $task = Task::create($this->id(), TaskTitle::fromString('Example task'));
+        $this->pdo->exec('ALTER TABLE task MODIFY title VARCHAR(5) NOT NULL');
+
+        $this->expectException(PDOException::class);
+        try {
+            $repository->add($task);
+        } finally {
+            self::assertNull($repository->find($this->id()));
+            self::assertEquals([new TaskCreated($this->id(), $task->state()->title)], $task->pullDomainEvents());
+        }
+    }
+
+    #[Test]
+    public function writesParticipateInCallerOwnedTransactions(): void
+    {
+        $repository = new PdoTaskRepository($this->pdo, $this->clock);
+        $task = Task::reconstitute(new TaskState(
+            $this->id(),
+            TaskTitle::reconstitute('Existing task'),
+            TaskStatus::Pending,
+            null,
+        ));
+        $this->pdo->beginTransaction();
+        $repository->add($task);
+        self::assertTrue($this->pdo->inTransaction());
+        $this->pdo->rollBack();
+        self::assertNull($repository->find($this->id()));
+
+        $repository->add($task);
+        $this->pdo->beginTransaction();
+        $task->rename(TaskTitle::fromString('Changed task'));
+        $task->pullDomainEvents();
+        $repository->update($task);
+        $this->pdo->rollBack();
+        self::assertSame('Existing task', $repository->find($this->id())?->state()->title->value);
+
+        $this->pdo->beginTransaction();
+        $repository->remove($task);
+        self::assertNull($repository->find($this->id()));
+        $this->pdo->rollBack();
+        self::assertNotNull($repository->find($this->id()));
     }
 
     private function id(): TaskId

@@ -8,7 +8,7 @@ direction, defines requirements, and guides architectural decisions. AI assists 
 documentation using task-specific prompts and the project conventions in [AGENTS.md](AGENTS.md).
 
 This project is a work in progress. It currently provides the application bootstrap, a public API information endpoint,
-authorization for its self-link, and automated tests. A complete DDD/CQRS use case and database integration are still
+authorization for its self-link, and automated tests. A complete DDD/CQRS use case is still
 planned; see [TODO.md](TODO.md).
 
 ## Getting started
@@ -66,7 +66,10 @@ just docker-up
 ```
 
 Store timestamps in UTC; the schema uses `DATETIME(6)` to preserve microseconds and expects writes to supply timestamps.
-The Task schema provides the initial storage structure; task operations still use the in-memory repository.
+The Task module provides a MySQL PDO repository implementation. Construct `PdoTaskRepository` with
+an exception-mode PDO connection and a clock. It records `created_at` on insertion using the clock and
+preserves it on updates. Callers own transaction boundaries; a durable outbox must use the same connection to make
+state and event storage atomic.
 
 ## Architecture
 
@@ -116,5 +119,6 @@ just composer-dump-autoload
 just php vendor/bin/phpunit module
 ```
 
-The test suite includes integration tests and end-to-end HTTP tests that use the running nginx service. GitHub Actions
+The test suite includes MySQL repository integration tests using connection-local temporary tables created from the
+module schema, and end-to-end HTTP tests that use the running nginx service. GitHub Actions
 runs validation and tests, with dependency auditing in a separate job and on a weekly schedule.
