@@ -6,6 +6,7 @@ namespace ExtendsSoftware\ExaPHPExample\Application\Tests;
 
 use ExtendsSoftware\ExaPHPExample\Application\ApplicationFactory;
 use ExtendsSoftware\ExaPHPExample\Application\ApplicationModule;
+use ExtendsSoftware\ExaPHPExample\Shared\SharedModule;
 use ExtendsSoftware\ExaPHPExample\Task\TaskModule;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\Test;
@@ -15,7 +16,7 @@ use function array_map;
 use function dirname;
 
 #[Group('integration')]
-final class ApplicationFactoryTest extends TestCase
+final class ApplicationFactoryIntegrationTest extends TestCase
 {
     #[Test]
     public function createsApplicationWithApplicationAndTaskModules(): void
@@ -24,7 +25,7 @@ final class ApplicationFactoryTest extends TestCase
         $application = new ApplicationFactory()->create($projectRoot);
 
         self::assertSame(
-            [ApplicationModule::class, TaskModule::class],
+            [ApplicationModule::class, SharedModule::class, TaskModule::class],
             array_map(
                 static fn(object $module): string => $module::class,
                 $application->getModules(),

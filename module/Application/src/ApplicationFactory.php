@@ -8,6 +8,7 @@ use ExtendsSoftware\ExaPHP\Application\ApplicationBuilder;
 use ExtendsSoftware\ExaPHP\Application\ApplicationBuilderException;
 use ExtendsSoftware\ExaPHP\Application\ApplicationInterface;
 use ExtendsSoftware\ExaPHP\ServiceLocator\ServiceLocatorException;
+use ExtendsSoftware\ExaPHPExample\Shared\SharedModule;
 use ExtendsSoftware\ExaPHPExample\Task\TaskModule;
 
 use function filter_var;
@@ -29,6 +30,7 @@ final readonly class ApplicationFactory
         $cacheEnabled = filter_var(getenv('APP_CACHE_ENABLED'), FILTER_VALIDATE_BOOLEAN);
         $modules = [
             new ApplicationModule(),
+            new SharedModule(),
             new TaskModule(),
         ];
 
