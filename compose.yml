@@ -24,6 +24,7 @@ services:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
     volumes:
       - mysql-data:/var/lib/mysql
+      - ./module/Shared/resources/database/schema.sql:/docker-entrypoint-initdb.d/005-shared.sql:ro,z
       - ./module/Task/resources/database/schema.sql:/docker-entrypoint-initdb.d/010-task.sql:ro,z
     healthcheck:
       test: >-
