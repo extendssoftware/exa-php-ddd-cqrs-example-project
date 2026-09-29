@@ -36,7 +36,7 @@ final class ReopenTaskHandlerIntegrationTest extends TaskCommandIntegrationTestC
         self::assertFalse($this->pdo->inTransaction());
         $stored = $this->repository->find($original->id);
         self::assertNotNull($stored);
-        self::assertSame(TaskStatus::Pending, $stored->state()->status);
+        self::assertSame(TaskStatus::Open, $stored->state()->status);
         self::assertNull($stored->state()->completedAt);
         self::assertEquals($original->createdAt, $stored->state()->createdAt);
         $rows = $this->pdo->query('SELECT event_type, event_version, payload FROM outbox')->fetchAll();

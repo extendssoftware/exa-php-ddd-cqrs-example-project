@@ -41,3 +41,8 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - Docker volume compatibility on hosts using SELinux.
+
+### Changed
+
+- Simplified the task lifecycle to open and completed, replacing the former pending status with open. Reopening a
+  completed task returns it to open and clears its completion timestamp.

@@ -155,7 +155,7 @@ final class DeleteTaskHandlerTest extends TestCase
         );
     }
 
-    private function task(TaskStatus $status = TaskStatus::Pending): Task
+    private function task(TaskStatus $status = TaskStatus::Open): Task
     {
         return Task::reconstitute(new TaskState(
             TaskId::fromString(self::ID),

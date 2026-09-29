@@ -33,14 +33,13 @@ final class GetTaskHandlerTest extends TestCase
     public static function storedTasks(): array
     {
         return [
-            'pending' => ['  Example task  ', TaskStatus::Pending, null],
-            'in progress' => ['Example task', TaskStatus::InProgress, null],
+            'open' => ['  Example task  ', TaskStatus::Open, null],
             'completed' => [
                 'Example task',
                 TaskStatus::Completed,
                 new DateTimeImmutable('2026-09-23T14:30:00.123456+02:00'),
             ],
-            'historical title' => [str_repeat('a', 101), TaskStatus::Pending, null],
+            'historical title' => [str_repeat('a', 101), TaskStatus::Open, null],
         ];
     }
 

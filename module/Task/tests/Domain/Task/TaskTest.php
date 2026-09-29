@@ -31,8 +31,7 @@ final class TaskTest extends TestCase
     public static function persistedStates(): array
     {
         return [
-            'pending' => [TaskStatus::Pending, null],
-            'in progress' => [TaskStatus::InProgress, null],
+            'open' => [TaskStatus::Open, null],
             'completed' => [TaskStatus::Completed, new DateTimeImmutable('2026-09-23T14:30:00+02:00')],
         ];
     }
@@ -64,8 +63,7 @@ final class TaskTest extends TestCase
 
         return [
             'completed without time' => [TaskStatus::Completed, null],
-            'pending with time' => [TaskStatus::Pending, $completedAt],
-            'in progress with time' => [TaskStatus::InProgress, $completedAt],
+            'open with time' => [TaskStatus::Open, $completedAt],
         ];
     }
 
@@ -88,7 +86,7 @@ final class TaskTest extends TestCase
     }
 
     #[Test]
-    public function createStartsPendingWithoutCompletionTime(): void
+    public function createStartsOpenWithoutCompletionTime(): void
     {
         $id = TaskId::fromString('01902424-9b00-7cc3-98c4-2c1f7c675ced');
         $title = TaskTitle::fromString('Complete the task');
@@ -97,7 +95,7 @@ final class TaskTest extends TestCase
 
         self::assertSame($id, $task->state()->id);
         self::assertSame($title, $task->state()->title);
-        self::assertSame(TaskStatus::Pending, $task->state()->status);
+        self::assertSame(TaskStatus::Open, $task->state()->status);
         self::assertNull($task->state()->completedAt);
     }
 
@@ -112,7 +110,7 @@ final class TaskTest extends TestCase
 
         self::assertSame($title, $task->state()->title);
         self::assertSame($id, $task->state()->id);
-        self::assertSame(TaskStatus::Pending, $task->state()->status);
+        self::assertSame(TaskStatus::Open, $task->state()->status);
         self::assertNull($task->state()->completedAt);
     }
 
@@ -174,7 +172,7 @@ final class TaskTest extends TestCase
     }
 
     #[Test]
-    public function reopenReturnsCompletedTaskToPendingAndClearsCompletionTime(): void
+    public function reopenReturnsCompletedTaskToOpenAndClearsCompletionTime(): void
     {
         $task = $this->task();
         $id = $task->state()->id;
@@ -183,7 +181,7 @@ final class TaskTest extends TestCase
 
         $task->reopen();
 
-        self::assertSame(TaskStatus::Pending, $task->state()->status);
+        self::assertSame(TaskStatus::Open, $task->state()->status);
         self::assertNull($task->state()->completedAt);
         self::assertSame($id, $task->state()->id);
         self::assertSame($title, $task->state()->title);
@@ -195,8 +193,7 @@ final class TaskTest extends TestCase
     public static function incompleteStatuses(): array
     {
         return [
-            'pending' => [TaskStatus::Pending],
-            'in progress' => [TaskStatus::InProgress],
+            'open' => [TaskStatus::Open],
         ];
     }
 
@@ -329,13 +326,13 @@ final class TaskTest extends TestCase
         $task->reopen();
 
         self::assertSame('Complete the task', $original->title->value);
-        self::assertSame(TaskStatus::Pending, $original->status);
+        self::assertSame(TaskStatus::Open, $original->status);
         self::assertNull($original->completedAt);
         self::assertSame($original->id, $completed->id);
         self::assertSame($title, $completed->title);
         self::assertSame(TaskStatus::Completed, $completed->status);
         self::assertSame($completedAt, $completed->completedAt);
-        self::assertSame(TaskStatus::Pending, $task->state()->status);
+        self::assertSame(TaskStatus::Open, $task->state()->status);
         self::assertNull($task->state()->completedAt);
     }
 
@@ -396,7 +393,7 @@ final class TaskTest extends TestCase
         $task->reopen();
 
         self::assertSame($title, $task->state()->title);
-        self::assertSame(TaskStatus::Pending, $task->state()->status);
+        self::assertSame(TaskStatus::Open, $task->state()->status);
         self::assertNull($task->state()->completedAt);
         self::assertEquals([
             new TaskCreated($state->id, $state->title, $state->createdAt),

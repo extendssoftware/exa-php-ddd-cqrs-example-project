@@ -26,7 +26,7 @@ final class Task extends AbstractAggregateRoot
 
     public static function create(TaskId $id, TaskTitle $title, DateTimeImmutable $createdAt): self
     {
-        $task = new self($id, $title, TaskStatus::Pending, $createdAt, null);
+        $task = new self($id, $title, TaskStatus::Open, $createdAt, null);
         $task->recordThat(new TaskCreated($id, $title, $createdAt));
 
         return $task;
@@ -66,7 +66,7 @@ final class Task extends AbstractAggregateRoot
             throw new TaskNotCompleted($this->id);
         }
 
-        $this->status = TaskStatus::Pending;
+        $this->status = TaskStatus::Open;
         $this->completedAt = null;
         $this->recordThat(new TaskReopened($this->id));
     }

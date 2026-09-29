@@ -29,7 +29,7 @@ final class RenameTaskHandlerIntegrationTest extends TaskCommandIntegrationTestC
     #[Test]
     public function invokeCommitsTaskChangeAndSerializedEventTogether(): void
     {
-        $original = $this->seed(TaskStatus::Pending);
+        $original = $this->seed(TaskStatus::Open);
 
         ($this->handler)(new RenameTask(self::ID, 'Renamed task'));
 
@@ -49,7 +49,7 @@ final class RenameTaskHandlerIntegrationTest extends TaskCommandIntegrationTestC
     #[Test]
     public function invokeRollsBackTaskChangeWhenOutboxWriteFails(): void
     {
-        $original = $this->seed(TaskStatus::Pending);
+        $original = $this->seed(TaskStatus::Open);
         $this->pdo->exec('ALTER TABLE outbox MODIFY event_type VARCHAR(1) NOT NULL');
         $this->expectException(PDOException::class);
 

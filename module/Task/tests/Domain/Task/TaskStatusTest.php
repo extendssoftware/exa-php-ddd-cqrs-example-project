@@ -12,14 +12,19 @@ use ValueError;
 
 final class TaskStatusTest extends TestCase
 {
+    #[Test]
+    public function lifecycleContainsOnlyOpenAndCompleted(): void
+    {
+        self::assertSame([TaskStatus::Open, TaskStatus::Completed], TaskStatus::cases());
+    }
+
     /**
      * @return array<string, array{string, TaskStatus}>
      */
     public static function statuses(): array
     {
         return [
-            'pending' => ['pending', TaskStatus::Pending],
-            'in progress' => ['in_progress', TaskStatus::InProgress],
+            'open' => ['open', TaskStatus::Open],
             'completed' => ['completed', TaskStatus::Completed],
         ];
     }
@@ -47,8 +52,10 @@ final class TaskStatusTest extends TestCase
         return [
             'empty' => [''],
             'unknown' => ['cancelled'],
-            'uppercase' => ['PENDING'],
-            'whitespace' => [' pending '],
+            'removed in-progress state' => ['in_progress'],
+            'old pending name' => ['pending'],
+            'uppercase' => ['OPEN'],
+            'whitespace' => [' open '],
         ];
     }
 

@@ -57,7 +57,7 @@ final class ReopenTaskHandlerTest extends TestCase
         $this->repository->expects(self::once())->method('update')->with(self::identicalTo($task))
             ->willReturnCallback(function (Task $stored) use (&$saved): void {
                 self::assertTrue($this->insideTransaction);
-                self::assertSame(TaskStatus::Pending, $stored->state()->status);
+                self::assertSame(TaskStatus::Open, $stored->state()->status);
                 self::assertNull($stored->state()->completedAt);
                 $saved = true;
             });
@@ -147,7 +147,7 @@ final class ReopenTaskHandlerTest extends TestCase
     public function invokePropagatesDomainRejectionWithoutWriting(): void
     {
         $this->transaction();
-        $this->repository->expects(self::once())->method('find')->willReturn($this->task(TaskStatus::Pending));
+        $this->repository->expects(self::once())->method('find')->willReturn($this->task(TaskStatus::Open));
         $this->repository->expects(self::never())->method('update');
         $this->outbox->expects(self::never())->method('append');
         $this->expectException(TaskNotCompleted::class);

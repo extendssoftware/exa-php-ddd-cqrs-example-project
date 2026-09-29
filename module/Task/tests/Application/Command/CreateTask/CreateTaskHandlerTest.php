@@ -31,7 +31,7 @@ final class CreateTaskHandlerTest extends TestCase
     private const string TASK_ID = '01902424-9b00-7cc3-98c4-2c1f7c675ced';
 
     #[Test]
-    public function invokeAddsPendingTaskWithSuppliedIdAndTitle(): void
+    public function invokeAddsOpenTaskWithSuppliedIdAndTitle(): void
     {
         $insideTransaction = false;
         $saved = null;
@@ -47,7 +47,7 @@ final class CreateTaskHandlerTest extends TestCase
                         $state = $task->state();
                         self::assertSame(self::TASK_ID, $state->id->value);
                         self::assertSame('  Example task  ', $state->title->value);
-                        self::assertSame(TaskStatus::Pending, $state->status);
+                        self::assertSame(TaskStatus::Open, $state->status);
                         self::assertNull($state->completedAt);
                         self::assertEquals(new DateTimeImmutable('2026-09-23T10:00:00.123456+02:00'), $state->createdAt);
 

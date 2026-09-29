@@ -26,7 +26,7 @@ final class TaskLifecycleIntegrationTest extends TaskCommandIntegrationTestCase
     #[Test]
     public function handlersPersistLifecycleChangesAndTheirEvents(): void
     {
-        $original = $this->seed(TaskStatus::Pending);
+        $original = $this->seed(TaskStatus::Open);
         $id = $original->id;
 
         $this->execute('rename');
@@ -38,7 +38,7 @@ final class TaskLifecycleIntegrationTest extends TaskCommandIntegrationTestCase
         self::assertEquals($original->createdAt, $completed?->createdAt);
         $this->execute('reopen');
         $reopened = $this->repository->find($id)?->state();
-        self::assertSame(TaskStatus::Pending, $reopened?->status);
+        self::assertSame(TaskStatus::Open, $reopened?->status);
         self::assertNull($reopened?->completedAt);
         $this->execute('delete');
         self::assertNull($this->repository->find($id));

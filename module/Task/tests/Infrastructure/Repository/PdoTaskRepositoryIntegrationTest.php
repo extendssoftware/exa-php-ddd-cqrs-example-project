@@ -354,12 +354,12 @@ final class PdoTaskRepositoryIntegrationTest extends TestCase
         $task = Task::reconstitute(new TaskState(
             $this->id(),
             TaskTitle::reconstitute('Historical task'),
-            TaskStatus::InProgress,
+            TaskStatus::Open,
             new DateTimeImmutable('2020-01-02T14:00:00.123456+02:00'),
             null,
         ));
         $repository->add($task);
-        self::assertSame(TaskStatus::InProgress, $repository->find($this->id())?->state()->status);
+        self::assertSame(TaskStatus::Open, $repository->find($this->id())?->state()->status);
         self::assertSame('2020-01-02 12:00:00.123456', $this->pdo->query('SELECT created_at FROM task')->fetchColumn());
 
         $task->complete(new DateTimeImmutable('2026-09-30T14:30:00.654321+02:00'));
@@ -399,7 +399,7 @@ final class PdoTaskRepositoryIntegrationTest extends TestCase
         $task = Task::reconstitute(new TaskState(
             $this->id(),
             TaskTitle::reconstitute('Existing task'),
-            TaskStatus::Pending,
+            TaskStatus::Open,
             new DateTimeImmutable('2026-09-29T14:00:00.123456+02:00'),
             null,
         ));
