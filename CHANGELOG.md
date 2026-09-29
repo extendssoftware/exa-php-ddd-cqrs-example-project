@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Task rename, completion, reopening, and deletion commands persist domain changes and their outbox events in one
+  transaction. Completion uses the application clock; deletion permanently removes the task.
 - Durable PDO outbox storage with stable event types, separate payload versions, JSON Task event payloads, and atomic
   task/event writes through the shared database transaction. Replaces the in-memory outbox.
 - Task retrieval results include the stored creation timestamp.
