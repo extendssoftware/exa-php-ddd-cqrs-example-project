@@ -80,7 +80,10 @@
 
 - Add or update tests for every behavior change.
 - A regression fix must include a test that reproduces the failure.
-- Mirror production namespaces below `module/<Module>/tests/` and name test classes `*Test`.
+- Mirror production namespaces below `module/<Module>/tests/`. Name unit test classes `<Class>Test`, integration test
+  classes `<Class>IntegrationTest`, and end-to-end test classes `<Feature>E2eTest`; match filenames to class names.
+- Mark integration tests with `#[Group('integration')]` and end-to-end tests with `#[Group('e2e')]`. Unit tests may remain
+  ungrouped.
 - Name controller test methods using `<action><expected behavior>`, starting with the controller action (e.g. `get`,
   `post`, or `put`): `getReturnsApiInformationAsHalJson`, `postRejectsInvalidInput`, or `putUpdatesResource`. Apply this
   convention to unit, integration, and end-to-end controller tests.
