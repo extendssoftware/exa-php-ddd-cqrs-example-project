@@ -21,7 +21,7 @@ use function getenv;
 use function putenv;
 
 #[Group('integration')]
-final class PdoFactoryTest extends TestCase
+final class PdoFactoryIntegrationTest extends TestCase
 {
     #[Test]
     public function createsConnectionWithConfiguredOptions(): void
