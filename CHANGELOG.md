@@ -6,13 +6,12 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Durable PDO outbox storage with stable event types, separate payload versions, JSON Task event payloads, and atomic
+  task/event writes through the shared database transaction. Replaces the in-memory outbox.
 - Task retrieval results include the stored creation timestamp.
-
 - Task creation events include the aggregate’s creation timestamp.
-
 - Tasks retain their creation time as immutable aggregate state, supplied by the task creation handler’s clock and
   preserved through persistence and reconstitution.
-
 - Task creation now wraps persistence and forwarding domain events to an injected outbox in an explicit transaction
   after validating command input.
 - PDO task repository for MySQL with binary UUID storage and UTC timestamps.

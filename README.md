@@ -57,7 +57,9 @@ Add a volume mount for each module's schema, using numbered destination filename
 execution order.
 
 Initialization scripts run only for an empty data volume. Restarting containers, adding schema mounts, or changing SQL
-files does not update an existing database. Apply changes manually to existing databases. To rebuild a disposable local
+files does not update an existing database. Apply changes manually to existing databases, including
+`module/Shared/resources/database/schema.sql` to add the outbox table to an existing installation.
+To rebuild a disposable local
 database from the schema files, run the following commands; this deletes all existing database data:
 
 ```sh
@@ -91,17 +93,39 @@ abstractions provide a migration point for future framework support; aggregate i
 their owning domains. Shared application contracts also provide an injectable time source, with system and frozen clock
 implementations in Infrastructure for production use and deterministic tests.
 
-Shared also provides an outbox contract and an in-memory implementation. Command handlers receive the outbox through
-constructor injection and append pending domain events after successful repository writes. Repositories persist aggregate
-state and leave pending events available to the caller. The in-memory outbox keeps event objects only for its instance's
-lifetime; durable messages, serialization, and asynchronous publication are not implemented.
+Shared provides an outbox contract mapped to `PdoOutbox`. Command handlers append pending domain events after successful
+repository writes, inside the same transaction. The outbox stores a UUID message ID, event type, integer payload version, JSON payload,
+and UTC recording time in the Shared module's `outbox` table. Task module configuration supplies an explicit serializer
+for its domain events, including UTC timestamps with microsecond precision. Payloads use stable names such as
+`task.created`, independently of PHP class names. `SerializedEvent::version` and the outbox `event_version` column
+carry the payload version separately; Task events currently use version `1`. Asynchronous publication is not implemented.
+
+Shared configuration resolves `EventSerializerInterface` through `EventSerializerRegistryFactory`. Each module registers
+its concrete serializers with the appropriate resolver (`InvokableResolver` for the dependency-free `TaskEventSerializer`)
+and provides event-to-serializer mappings under
+`EventSerializerRegistry::class`, grouped by its module class:
+
+```php
+EventSerializerRegistry::class => [
+    TaskModule::class => [
+        TaskCreated::class => TaskEventSerializer::class,
+        // Other events owned by this module.
+    ],
+],
+```
+
+The factory merges these registrations into an exact event-class lookup and injects resolved serializers into the registry.
+Module grouping preserves duplicate registrations during configuration merging so the factory can reject them. Unknown
+event classes fail explicitly; the registry does not try unrelated serializers.
+
 
 Shared provides an application `TransactionManagerInterface` mapped to `PdoTransactionManager` through the reflection
 resolver, using the configured shared `PDO` service. Wrap a command's
 persistence and outbox operations in `transactional()` to commit them together or roll back on failure, using the same
 exception-mode PDO connection for all participating adapters. Nested transactions are rejected. The callback must not
-manage transactions or execute statements that implicitly commit. The in-memory outbox does not participate in database
-transactions. `CreateTaskHandler` validates input before using the injected transaction manager to wrap task persistence and outbox event forwarding.
+manage transactions or execute statements that implicitly commit. The configured PDO outbox participates in the same
+transaction as the task repository. `CreateTaskHandler` validates input before using the injected transaction manager to
+wrap task persistence and outbox event forwarding.
 
 The current `Application` module assembles the API. The HTTP entry point is `public/v1/index.php`. Successful response
 bodies use ExaPHP HATEOAS resources, and errors use Problem Details. Tests mirror production namespaces under each
