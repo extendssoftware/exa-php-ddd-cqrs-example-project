@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ExtendsSoftware\ExaPHPExample\Task\Application\Command\CreateTask;
 
+use ExtendsSoftware\ExaPHPExample\Shared\Application\Clock\ClockInterface;
 use ExtendsSoftware\ExaPHPExample\Shared\Application\Outbox\OutboxInterface;
 use ExtendsSoftware\ExaPHPExample\Shared\Application\Transaction\TransactionManagerInterface;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Exception\InvalidTaskId;
@@ -21,13 +22,14 @@ final readonly class CreateTaskHandler
         private TaskRepositoryInterface $repository,
         private TransactionManagerInterface $transactionManager,
         private OutboxInterface $outbox,
+        private ClockInterface $clock,
     ) {}
 
     /**
      * @throws InvalidTaskId When the supplied ID is not a valid UUID version 7.
      * @throws InvalidTaskTitle When the title is not valid UTF-8 or its length is outside the domain limits.
      * @throws TaskAlreadyExists When a task with the supplied ID is already stored.
-     * @throws Throwable When transaction management, persistence, or outbox storage fails.
+     * @throws Throwable When transaction management, persistence, outbox storage, or reading the clock fails.
      */
     public function __invoke(CreateTask $command): void
     {
@@ -35,7 +37,7 @@ final readonly class CreateTaskHandler
         $title = TaskTitle::fromString($command->title);
 
         $this->transactionManager->transactional(function () use ($id, $title): void {
-            $task = Task::create($id, $title);
+            $task = Task::create($id, $title, $this->clock->now());
             $this->repository->add($task);
 
             foreach ($task->pullDomainEvents() as $event) {

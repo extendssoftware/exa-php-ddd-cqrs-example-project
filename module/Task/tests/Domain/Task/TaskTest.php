@@ -46,7 +46,7 @@ final class TaskTest extends TestCase
         $id = TaskId::fromString('01902424-9b00-7cc3-98c4-2c1f7c675ced');
         $title = TaskTitle::reconstitute(str_repeat('a', 101));
 
-        $task = Task::reconstitute(new TaskState($id, $title, $status, $completedAt));
+        $task = Task::reconstitute(new TaskState($id, $title, $status, new DateTimeImmutable('2026-09-23T10:00:00.123456+02:00'), $completedAt));
 
         self::assertSame($id, $task->state()->id);
         self::assertSame($title, $task->state()->title);
@@ -78,7 +78,7 @@ final class TaskTest extends TestCase
         $id = TaskId::fromString('01902424-9b00-7cc3-98c4-2c1f7c675ced');
         $title = TaskTitle::reconstitute('Existing task');
 
-        $task = Task::reconstitute(new TaskState($id, $title, $status, $completedAt));
+        $task = Task::reconstitute(new TaskState($id, $title, $status, new DateTimeImmutable('2026-09-23T10:00:00.123456+02:00'), $completedAt));
 
         self::assertSame($id, $task->state()->id);
         self::assertSame($title, $task->state()->title);
@@ -93,7 +93,7 @@ final class TaskTest extends TestCase
         $id = TaskId::fromString('01902424-9b00-7cc3-98c4-2c1f7c675ced');
         $title = TaskTitle::fromString('Complete the task');
 
-        $task = Task::create($id, $title);
+        $task = Task::create($id, $title, new DateTimeImmutable('2026-09-23T10:00:00.123456+02:00'));
 
         self::assertSame($id, $task->state()->id);
         self::assertSame($title, $task->state()->title);
@@ -152,7 +152,7 @@ final class TaskTest extends TestCase
             self::assertSame(TaskStatus::Completed, $task->state()->status);
             self::assertSame($completedAt, $task->state()->completedAt);
             self::assertEquals([
-                new TaskCreated($task->state()->id, $task->state()->title),
+                new TaskCreated($task->state()->id, $task->state()->title, $task->state()->createdAt),
                 new TaskCompleted($task->state()->id, $completedAt),
             ], $task->pullDomainEvents());
         }
@@ -206,7 +206,7 @@ final class TaskTest extends TestCase
     {
         $id = TaskId::fromString('01902424-9b00-7cc3-98c4-2c1f7c675ced');
         $title = TaskTitle::fromString('Complete the task');
-        $task = Task::reconstitute(new TaskState($id, $title, $status, null));
+        $task = Task::reconstitute(new TaskState($id, $title, $status, new DateTimeImmutable('2026-09-23T10:00:00.123456+02:00'), null));
 
         $this->expectException(TaskNotCompleted::class);
         $this->expectExceptionMessageIsOrContains('Task "01902424-9b00-7cc3-98c4-2c1f7c675ced" is not completed.');
@@ -255,7 +255,7 @@ final class TaskTest extends TestCase
         $events = $task->pullDomainEvents();
 
         self::assertEquals([
-            new TaskCreated($task->state()->id, $originalTitle),
+            new TaskCreated($task->state()->id, $originalTitle, $task->state()->createdAt),
             new TaskRenamed($task->state()->id, $renamedTitle),
             new TaskCompleted($task->state()->id, $completedAt),
             new TaskReopened($task->state()->id),
@@ -292,6 +292,7 @@ final class TaskTest extends TestCase
             $id,
             TaskTitle::reconstitute('Existing title'),
             TaskStatus::Completed,
+            new DateTimeImmutable('2026-09-23T10:00:00.123456+02:00'),
             new DateTimeImmutable('2026-09-23T12:00:00Z'),
         ));
 
@@ -307,10 +308,11 @@ final class TaskTest extends TestCase
         $second = Task::create(
             TaskId::fromString('01902424-9b00-7cc3-98c4-2c1f7c675cee'),
             TaskTitle::fromString('Second task'),
+            new DateTimeImmutable('2026-09-23T10:00:00.123456+02:00'),
         );
 
-        self::assertEquals([new TaskCreated($first->state()->id, $first->state()->title)], $first->pullDomainEvents());
-        self::assertEquals([new TaskCreated($second->state()->id, $second->state()->title)], $second->pullDomainEvents());
+        self::assertEquals([new TaskCreated($first->state()->id, $first->state()->title, $first->state()->createdAt)], $first->pullDomainEvents());
+        self::assertEquals([new TaskCreated($second->state()->id, $second->state()->title, $second->state()->createdAt)], $second->pullDomainEvents());
     }
 
     #[Test]
@@ -350,7 +352,7 @@ final class TaskTest extends TestCase
         self::assertEquals($state, $restored->state());
         self::assertSame([], $restored->pullDomainEvents());
         self::assertEquals([
-            new TaskCreated($state->id, $state->title),
+            new TaskCreated($state->id, $state->title, $state->createdAt),
             new TaskCompleted($state->id, $completedAt),
         ], $task->pullDomainEvents());
 
@@ -368,6 +370,7 @@ final class TaskTest extends TestCase
             TaskId::fromString('01902424-9b00-7cc3-98c4-2c1f7c675ced'),
             TaskTitle::reconstitute('Existing task'),
             $status,
+            new DateTimeImmutable('2026-09-23T10:00:00.123456+02:00'),
             $completedAt,
         );
         $task = Task::reconstitute($state);
@@ -396,7 +399,7 @@ final class TaskTest extends TestCase
         self::assertSame(TaskStatus::Pending, $task->state()->status);
         self::assertNull($task->state()->completedAt);
         self::assertEquals([
-            new TaskCreated($state->id, $state->title),
+            new TaskCreated($state->id, $state->title, $state->createdAt),
             new TaskDeleted($state->id),
             new TaskRenamed($state->id, $title),
             new TaskCompleted($state->id, $completedAt),
@@ -404,11 +407,38 @@ final class TaskTest extends TestCase
         ], $task->pullDomainEvents());
     }
 
+    #[Test]
+    public function creationTimeSurvivesDomainChangesAndReconstitution(): void
+    {
+        $createdAt = new DateTimeImmutable('2020-01-02T14:30:00.123456+02:00');
+        $task = Task::create(
+            TaskId::fromString('01902424-9b00-7cc3-98c4-2c1f7c675ced'),
+            TaskTitle::fromString('Example task'),
+            $createdAt,
+        );
+        self::assertSame($createdAt, $task->state()->createdAt);
+        $events = $task->pullDomainEvents();
+        self::assertCount(1, $events);
+        self::assertInstanceOf(TaskCreated::class, $events[0]);
+        self::assertSame($createdAt, $events[0]->createdAt);
+
+        $task->rename(TaskTitle::fromString('Renamed task'));
+        $task->complete(new DateTimeImmutable('2026-09-23T12:00:00Z'));
+        $task->reopen();
+        $task->delete();
+        self::assertSame($createdAt, $task->state()->createdAt);
+
+        $restored = Task::reconstitute($task->state());
+        self::assertSame($createdAt, $restored->state()->createdAt);
+        self::assertSame([], $restored->pullDomainEvents());
+    }
+
     private function task(): Task
     {
         return Task::create(
             TaskId::fromString('01902424-9b00-7cc3-98c4-2c1f7c675ced'),
             TaskTitle::fromString('Complete the task'),
+            new DateTimeImmutable('2026-09-23T10:00:00.123456+02:00'),
         );
     }
 }

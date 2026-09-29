@@ -52,7 +52,8 @@ final class GetTaskHandlerTest extends TestCase
         ?DateTimeImmutable $completedAt,
     ): void {
         $id = TaskId::fromString(self::TASK_ID);
-        $state = new TaskState($id, TaskTitle::reconstitute($title), $status, $completedAt);
+        $createdAt = new DateTimeImmutable('2026-09-23T10:00:00.123456+02:00');
+        $state = new TaskState($id, TaskTitle::reconstitute($title), $status, $createdAt, $completedAt);
         $task = Task::reconstitute($state);
         $repository = $this->readOnlyRepository();
         $repository
@@ -67,6 +68,7 @@ final class GetTaskHandlerTest extends TestCase
         self::assertSame(self::TASK_ID, $result->taskId);
         self::assertSame($title, $result->title);
         self::assertSame($status->value, $result->status);
+        self::assertSame($createdAt, $result->createdAt);
         self::assertSame($completedAt, $result->completedAt);
         self::assertEquals($state, $task->state());
         self::assertSame([], $task->pullDomainEvents());
@@ -77,7 +79,7 @@ final class GetTaskHandlerTest extends TestCase
     {
         $id = TaskId::fromString(self::TASK_ID);
         $title = TaskTitle::fromString('Example task');
-        $task = Task::create($id, $title);
+        $task = Task::create($id, $title, new DateTimeImmutable('2026-09-23T10:00:00.123456+02:00'));
         $repository = $this->readOnlyRepository();
         $repository
             ->expects(self::once())
@@ -88,7 +90,7 @@ final class GetTaskHandlerTest extends TestCase
 
         $handler(new GetTask(self::TASK_ID));
 
-        self::assertEquals([new TaskCreated($id, $title)], $task->pullDomainEvents());
+        self::assertEquals([new TaskCreated($id, $title, $task->state()->createdAt)], $task->pullDomainEvents());
     }
 
     #[Test]

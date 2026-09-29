@@ -67,8 +67,8 @@ just docker-up
 
 Store timestamps in UTC; the schema uses `DATETIME(6)` to preserve microseconds and expects writes to supply timestamps.
 The Task module provides a MySQL PDO repository implementation. Construct `PdoTaskRepository` with
-an exception-mode PDO connection and a clock. It records `created_at` on insertion using the clock and
-preserves it on updates. Callers own transaction boundaries; a durable outbox must use the same connection to make
+an exception-mode PDO connection. Task creation receives time from the handler’s injected clock; the repository persists
+and restores that timestamp and preserves it on updates. Callers own transaction boundaries; a durable outbox must use the same connection to make
 state and event storage atomic.
 
 ## Architecture

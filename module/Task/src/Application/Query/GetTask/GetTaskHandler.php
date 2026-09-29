@@ -31,6 +31,7 @@ final readonly class GetTaskHandler
             $state->id->value,
             $state->title->value,
             $state->status->value,
+            $state->createdAt,
             $state->completedAt,
         );
     }

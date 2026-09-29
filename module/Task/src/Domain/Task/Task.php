@@ -20,25 +20,26 @@ final class Task extends AbstractAggregateRoot
         private readonly TaskId $id,
         private TaskTitle $title,
         private TaskStatus $status,
+        private readonly DateTimeImmutable $createdAt,
         private ?DateTimeImmutable $completedAt,
     ) {}
 
-    public static function create(TaskId $id, TaskTitle $title): self
+    public static function create(TaskId $id, TaskTitle $title, DateTimeImmutable $createdAt): self
     {
-        $task = new self($id, $title, TaskStatus::Pending, null);
-        $task->recordThat(new TaskCreated($id, $title));
+        $task = new self($id, $title, TaskStatus::Pending, $createdAt, null);
+        $task->recordThat(new TaskCreated($id, $title, $createdAt));
 
         return $task;
     }
 
     public static function reconstitute(TaskState $state): self
     {
-        return new self($state->id, $state->title, $state->status, $state->completedAt);
+        return new self($state->id, $state->title, $state->status, $state->createdAt, $state->completedAt);
     }
 
     public function state(): TaskState
     {
-        return new TaskState($this->id, $this->title, $this->status, $this->completedAt);
+        return new TaskState($this->id, $this->title, $this->status, $this->createdAt, $this->completedAt);
     }
 
     public function delete(): void

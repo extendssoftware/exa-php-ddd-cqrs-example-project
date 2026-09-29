@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Event;
 
+use DateTimeImmutable;
 use ExtendsSoftware\ExaPHPExample\Shared\Domain\DomainEventInterface;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\TaskId;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\TaskTitle;
@@ -13,5 +14,6 @@ final readonly class TaskCreated implements DomainEventInterface
     public function __construct(
         private(set) TaskId $taskId,
         private(set) TaskTitle $title,
+        private(set) DateTimeImmutable $createdAt,
     ) {}
 }

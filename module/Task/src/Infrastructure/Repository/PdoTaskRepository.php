@@ -7,7 +7,6 @@ namespace ExtendsSoftware\ExaPHPExample\Task\Infrastructure\Repository;
 use DateMalformedStringException;
 use DateTimeImmutable;
 use DateTimeZone;
-use ExtendsSoftware\ExaPHPExample\Shared\Application\Clock\ClockInterface;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Exception\InvalidTaskId;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Exception\TaskAlreadyExists;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Exception\TaskNotFound;
@@ -22,20 +21,17 @@ use PDOException;
 
 final readonly class PdoTaskRepository implements TaskRepositoryInterface
 {
-    public function __construct(
-        private PDO $pdo,
-        private ClockInterface $clock,
-    ) {}
+    public function __construct(private PDO $pdo) {}
 
     /**
      * @throws PDOException When the database read fails.
      * @throws InvalidTaskId When the stored ID is not a UUID version 7.
-     * @throws DateMalformedStringException When the stored completion time is invalid.
+     * @throws DateMalformedStringException When a stored creation or completion time is invalid.
      */
     public function find(TaskId $id): ?Task
     {
         $statement = $this->pdo->prepare(
-            'SELECT BIN_TO_UUID(id) AS id, title, status, completed_at FROM task WHERE id = UUID_TO_BIN(:id)',
+            'SELECT BIN_TO_UUID(id) AS id, title, status, created_at, completed_at FROM task WHERE id = UUID_TO_BIN(:id)',
         );
         $statement->execute(['id' => $id->value]);
 
@@ -49,10 +45,8 @@ final readonly class PdoTaskRepository implements TaskRepositoryInterface
                 TaskId::fromString($row['id']),
                 TaskTitle::reconstitute($row['title']),
                 TaskStatus::from($row['status']),
-                $row['completed_at'] === null ? null : new DateTimeImmutable(
-                    $row['completed_at'],
-                    new DateTimeZone('UTC'),
-                ),
+                $this->fromDatabaseTimestamp($row['created_at']),
+                $this->fromDatabaseTimestamp($row['completed_at']),
             ),
         );
     }
@@ -74,8 +68,8 @@ final readonly class PdoTaskRepository implements TaskRepositoryInterface
                 'id' => $state->id->value,
                 'title' => $state->title->value,
                 'status' => $state->status->value,
-                'created_at' => $this->timestamp($this->clock->now()),
-                'completed_at' => $this->timestamp($state->completedAt),
+                'created_at' => $this->toDatabaseTimestamp($state->createdAt),
+                'completed_at' => $this->toDatabaseTimestamp($state->completedAt),
             ]);
         } catch (PDOException $exception) {
             if (($exception->errorInfo[1] ?? null) === 1062) {
@@ -101,7 +95,7 @@ final readonly class PdoTaskRepository implements TaskRepositoryInterface
             'id' => $state->id->value,
             'title' => $state->title->value,
             'status' => $state->status->value,
-            'completed_at' => $this->timestamp($state->completedAt),
+            'completed_at' => $this->toDatabaseTimestamp($state->completedAt),
         ]);
 
         if ($statement->rowCount() === 0) {
@@ -130,9 +124,17 @@ final readonly class PdoTaskRepository implements TaskRepositoryInterface
         }
     }
 
-    private function timestamp(?DateTimeImmutable $time): ?string
+    private function toDatabaseTimestamp(?DateTimeImmutable $time): ?string
     {
         return $time?->setTimezone(new DateTimeZone('UTC'))
                     ->format('Y-m-d H:i:s.u');
+    }
+
+    /**
+     * @throws DateMalformedStringException When the stored timestamp is invalid.
+     */
+    private function fromDatabaseTimestamp(?string $time): ?DateTimeImmutable
+    {
+        return $time === null ? null : new DateTimeImmutable($time, new DateTimeZone('UTC'));
     }
 }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace ExtendsSoftware\ExaPHPExample\Task\Tests\Application\Command\CreateTask;
 
+use DateTimeImmutable;
+use ExtendsSoftware\ExaPHPExample\Shared\Application\Clock\ClockInterface;
 use ExtendsSoftware\ExaPHPExample\Shared\Application\Outbox\OutboxInterface;
 use ExtendsSoftware\ExaPHPExample\Shared\Application\Transaction\TransactionManagerInterface;
 use ExtendsSoftware\ExaPHPExample\Task\Application\Command\CreateTask\CreateTask;
@@ -47,6 +49,7 @@ final class CreateTaskHandlerTest extends TestCase
                         self::assertSame('  Example task  ', $state->title->value);
                         self::assertSame(TaskStatus::Pending, $state->status);
                         self::assertNull($state->completedAt);
+                        self::assertEquals(new DateTimeImmutable('2026-09-23T10:00:00.123456+02:00'), $state->createdAt);
 
                         return true;
                     },
@@ -71,10 +74,11 @@ final class CreateTaskHandlerTest extends TestCase
                 self::assertEquals(new TaskCreated(
                     TaskId::fromString(self::TASK_ID),
                     TaskTitle::fromString('  Example task  '),
+                    new DateTimeImmutable('2026-09-23T10:00:00.123456+02:00'),
                 ), $event);
             },
         );
-        $handler = new CreateTaskHandler($repository, $transactionManager, $outbox);
+        $handler = new CreateTaskHandler($repository, $transactionManager, $outbox, $this->clock());
 
         $handler(new CreateTask(self::TASK_ID, '  Example task  '));
         self::assertSame([], $saved->pullDomainEvents());
@@ -109,7 +113,7 @@ final class CreateTaskHandlerTest extends TestCase
         $transactionManager->expects(self::never())->method('transactional');
         $outbox = $this->createMock(OutboxInterface::class);
         $outbox->expects(self::never())->method('append');
-        $handler = new CreateTaskHandler($repository, $transactionManager, $outbox);
+        $handler = new CreateTaskHandler($repository, $transactionManager, $outbox, $this->clock());
 
         $this->expectException($exception);
 
@@ -138,7 +142,7 @@ final class CreateTaskHandlerTest extends TestCase
         );
         $outbox = $this->createMock(OutboxInterface::class);
         $outbox->expects(self::never())->method('append');
-        $handler = new CreateTaskHandler($repository, $transactionManager, $outbox);
+        $handler = new CreateTaskHandler($repository, $transactionManager, $outbox, $this->clock());
 
         $this->expectExceptionObject($exception);
 
@@ -155,7 +159,7 @@ final class CreateTaskHandlerTest extends TestCase
         $transactionManager->expects(self::once())->method('transactional')->willThrowException($exception);
         $outbox = $this->createMock(OutboxInterface::class);
         $outbox->expects(self::never())->method('append');
-        $handler = new CreateTaskHandler($repository, $transactionManager, $outbox);
+        $handler = new CreateTaskHandler($repository, $transactionManager, $outbox, $this->clock());
 
         $this->expectExceptionObject($exception);
 
@@ -192,10 +196,18 @@ final class CreateTaskHandlerTest extends TestCase
                 }
             },
         );
-        $handler = new CreateTaskHandler($repository, $transactionManager, $outbox);
+        $handler = new CreateTaskHandler($repository, $transactionManager, $outbox, $this->clock());
 
         $this->expectExceptionObject($exception);
 
         $handler(new CreateTask(self::TASK_ID, 'Example task'));
+    }
+
+    private function clock(): ClockInterface
+    {
+        $clock = $this->createStub(ClockInterface::class);
+        $clock->method('now')->willReturn(new DateTimeImmutable('2026-09-23T10:00:00.123456+02:00'));
+
+        return $clock;
     }
 }

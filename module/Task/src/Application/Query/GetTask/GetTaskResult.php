@@ -12,6 +12,7 @@ final readonly class GetTaskResult
         public string $taskId,
         public string $title,
         public string $status,
+        public DateTimeImmutable $createdAt,
         public ?DateTimeImmutable $completedAt,
     ) {}
 }
