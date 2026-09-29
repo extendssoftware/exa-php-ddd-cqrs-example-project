@@ -4,6 +4,9 @@
         <testsuite name="Application">
             <directory>module/Application/tests</directory>
         </testsuite>
+        <testsuite name="Shared">
+            <directory>module/Shared/tests</directory>
+        </testsuite>
         <testsuite name="Task">
             <directory>module/Task/tests</directory>
         </testsuite>
