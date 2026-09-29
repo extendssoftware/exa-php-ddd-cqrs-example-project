@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace ExtendsSoftware\ExaPHPExample\Task\Tests\Application\Command\CreateTask;
 
+use ExtendsSoftware\ExaPHPExample\Shared\Application\Outbox\OutboxInterface;
+use ExtendsSoftware\ExaPHPExample\Shared\Application\Transaction\TransactionManagerInterface;
 use ExtendsSoftware\ExaPHPExample\Task\Application\Command\CreateTask\CreateTask;
 use ExtendsSoftware\ExaPHPExample\Task\Application\Command\CreateTask\CreateTaskHandler;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Exception\InvalidTaskId;
@@ -13,9 +15,12 @@ use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Task;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\TaskId;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\TaskRepositoryInterface;
 use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\TaskStatus;
+use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\Event\TaskCreated;
+use ExtendsSoftware\ExaPHPExample\Task\Domain\Task\TaskTitle;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 
 use function str_repeat;
 
@@ -26,13 +31,17 @@ final class CreateTaskHandlerTest extends TestCase
     #[Test]
     public function invokeAddsPendingTaskWithSuppliedIdAndTitle(): void
     {
+        $insideTransaction = false;
+        $saved = null;
         $repository = $this->createMock(TaskRepositoryInterface::class);
         $repository
             ->expects(self::once())
             ->method('add')
             ->with(
                 self::callback(
-                    static function (Task $task): bool {
+                    static function (Task $task) use (&$insideTransaction, &$saved): bool {
+                        $saved = $task;
+                        self::assertTrue($insideTransaction);
                         $state = $task->state();
                         self::assertSame(self::TASK_ID, $state->id->value);
                         self::assertSame('  Example task  ', $state->title->value);
@@ -43,9 +52,32 @@ final class CreateTaskHandlerTest extends TestCase
                     },
                 ),
             );
-        $handler = new CreateTaskHandler($repository);
+        $transactionManager = $this->createMock(TransactionManagerInterface::class);
+        $transactionManager->expects(self::once())->method('transactional')->willReturnCallback(
+            static function (callable $operation) use (&$insideTransaction): mixed {
+                $insideTransaction = true;
+                try {
+                    return $operation();
+                } finally {
+                    $insideTransaction = false;
+                }
+            },
+        );
+        $outbox = $this->createMock(OutboxInterface::class);
+        $outbox->expects(self::once())->method('append')->willReturnCallback(
+            static function (TaskCreated $event) use (&$insideTransaction, &$saved): void {
+                self::assertTrue($insideTransaction);
+                self::assertInstanceOf(Task::class, $saved);
+                self::assertEquals(new TaskCreated(
+                    TaskId::fromString(self::TASK_ID),
+                    TaskTitle::fromString('  Example task  '),
+                ), $event);
+            },
+        );
+        $handler = new CreateTaskHandler($repository, $transactionManager, $outbox);
 
         $handler(new CreateTask(self::TASK_ID, '  Example task  '));
+        self::assertSame([], $saved->pullDomainEvents());
     }
 
     /**
@@ -73,7 +105,11 @@ final class CreateTaskHandlerTest extends TestCase
         $repository
             ->expects(self::never())
             ->method('add');
-        $handler = new CreateTaskHandler($repository);
+        $transactionManager = $this->createMock(TransactionManagerInterface::class);
+        $transactionManager->expects(self::never())->method('transactional');
+        $outbox = $this->createMock(OutboxInterface::class);
+        $outbox->expects(self::never())->method('append');
+        $handler = new CreateTaskHandler($repository, $transactionManager, $outbox);
 
         $this->expectException($exception);
 
@@ -89,7 +125,74 @@ final class CreateTaskHandlerTest extends TestCase
             ->expects(self::once())
             ->method('add')
             ->willThrowException($exception);
-        $handler = new CreateTaskHandler($repository);
+        $transactionManager = $this->createMock(TransactionManagerInterface::class);
+        $transactionManager->expects(self::once())->method('transactional')->willReturnCallback(
+            static function (callable $operation) use ($exception): mixed {
+                try {
+                    return $operation();
+                } catch (TaskAlreadyExists $caught) {
+                    self::assertSame($exception, $caught);
+                    throw $caught;
+                }
+            },
+        );
+        $outbox = $this->createMock(OutboxInterface::class);
+        $outbox->expects(self::never())->method('append');
+        $handler = new CreateTaskHandler($repository, $transactionManager, $outbox);
+
+        $this->expectExceptionObject($exception);
+
+        $handler(new CreateTask(self::TASK_ID, 'Example task'));
+    }
+
+    #[Test]
+    public function invokePropagatesTransactionFailureWithoutWriting(): void
+    {
+        $exception = new RuntimeException('Could not start transaction');
+        $repository = $this->createMock(TaskRepositoryInterface::class);
+        $repository->expects(self::never())->method('add');
+        $transactionManager = $this->createMock(TransactionManagerInterface::class);
+        $transactionManager->expects(self::once())->method('transactional')->willThrowException($exception);
+        $outbox = $this->createMock(OutboxInterface::class);
+        $outbox->expects(self::never())->method('append');
+        $handler = new CreateTaskHandler($repository, $transactionManager, $outbox);
+
+        $this->expectExceptionObject($exception);
+
+        $handler(new CreateTask(self::TASK_ID, 'Example task'));
+    }
+
+    #[Test]
+    public function invokePropagatesOutboxFailureThroughTransactionManager(): void
+    {
+        $exception = new RuntimeException('Outbox unavailable');
+        $saved = false;
+        $repository = $this->createMock(TaskRepositoryInterface::class);
+        $repository->expects(self::once())->method('add')->willReturnCallback(
+            static function (Task $task) use (&$saved): void {
+                $saved = true;
+            },
+        );
+        $outbox = $this->createMock(OutboxInterface::class);
+        $outbox->expects(self::once())->method('append')->willReturnCallback(
+            static function (TaskCreated $event) use (&$saved, $exception): never {
+                self::assertTrue($saved);
+                throw $exception;
+            },
+        );
+        $transactionManager = $this->createMock(TransactionManagerInterface::class);
+        $transactionManager->expects(self::once())->method('transactional')->willReturnCallback(
+            static function (callable $operation) use ($exception): void {
+                try {
+                    $operation();
+                    self::fail('Outbox failure must reach the transaction manager.');
+                } catch (RuntimeException $caught) {
+                    self::assertSame($exception, $caught);
+                    throw $caught;
+                }
+            },
+        );
+        $handler = new CreateTaskHandler($repository, $transactionManager, $outbox);
 
         $this->expectExceptionObject($exception);
 

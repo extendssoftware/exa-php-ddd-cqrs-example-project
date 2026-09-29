@@ -101,7 +101,7 @@ resolver, using the configured shared `PDO` service. Wrap a command's
 persistence and outbox operations in `transactional()` to commit them together or roll back on failure, using the same
 exception-mode PDO connection for all participating adapters. Nested transactions are rejected. The callback must not
 manage transactions or execute statements that implicitly commit. The in-memory outbox does not participate in database
-transactions; command handlers currently require explicit transaction coordination by their caller.
+transactions. `CreateTaskHandler` validates input before using the injected transaction manager to wrap task persistence and outbox event forwarding.
 
 The current `Application` module assembles the API. The HTTP entry point is `public/v1/index.php`. Successful response
 bodies use ExaPHP HATEOAS resources, and errors use Problem Details. Tests mirror production namespaces under each

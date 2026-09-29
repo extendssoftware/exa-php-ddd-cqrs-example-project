@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Task creation now wraps persistence and forwarding domain events to an injected outbox in an explicit transaction
+  after validating command input.
 - PDO task repository for MySQL with binary UUID storage and UTC timestamps.
 - MySQL published on localhost port 3306 for IDE database connections.
 - Automatic database table initialization on an empty MySQL volume through module-owned SQL files mounted by Compose,
